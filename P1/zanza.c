@@ -13,20 +13,9 @@
 
 typedef enum {false, true} bool;
 
-print(char *array, int length){
-    printf("word_separation = [");
-    for (int i = 0; i < length; i++) { 
-        printf("%02x,", array[i]);
-    }
-    printf("]\n");
-}
-
-
-bool contains(int val, char arr[], size_t n) {
+bool contains(char * val, char *arr[], size_t n) {
     for (size_t i = 0; i < n; i++) {
-        /* printf("lista: %02x\n", arr[i]);
-        printf("hex: %02x\n", val); */
-        if (arr[i] == val) return true;
+        if (strcmp(arr[i], val) == 0) return true;
     }
     return false;
 }
@@ -40,8 +29,7 @@ int main(int argc, char *argv[]) {
     }
 
     chdir("dataset");
-    char word_separation[16] = {0x20, 0x9, 0xa, 0xd, 0x21, 0x22, 0x28, 0x29, 0x2e, 0x2c, 0x3a, 0x3b, 0x3f, 0x5b, 0x5d, 0xe2};
-    print(word_separation, 16);
+    char *word_separation[16] = {"20", "9", "a", "d", "21", "22", "28", "29", "2e", "2c", "3a", "3b", "3f", "5b", "5d", "2d"};  // Ver os que faltam
 
     int i;
     for (i = 1; i < argc; i++) {
@@ -58,35 +46,31 @@ int main(int argc, char *argv[]) {
         bool inWord = false;
         bool new_word = false;
 
-        char _cmd[100] = "od -A x -t x1 %s";
+        char *_cmd = "od -A x -t x1 %s";
         char all_cmd[150];
         sprintf(all_cmd, _cmd, filename);
 
         // read file and get the content of the file in hexadecimal
         FILE *cmd = popen(all_cmd, "r");
         while (fgets(content, sizeof(content), cmd) != 0) {
-            char hex[100];
+            char * hex;
             hex = strtok (content," ,.-");
 
             // splitting content by space
             while (hex != NULL) {
                 
-                // convert hexadecimal char * to 
-                int * hexadecimal = (int *)(hex);
-                /* printf("%ls", hexadecimal); */
-
-                if (contains((int) * hexadecimal, word_separation, 16)) {
+                if (contains(hex, word_separation, 16)) {
                     printf("separation char: ");
-                    inWord = false;
+                    inWord   = false;
                     new_word = false;
 
                 } else if (!new_word && !inWord) {
                     new_word = true;
-                    inWord = true;
+                    inWord   = true;
 
                 } else {
                     new_word = false;
-                    inWord = true;
+                    inWord   = true;
                 }
 
                 if (inWord && new_word) {
