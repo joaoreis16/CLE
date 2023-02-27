@@ -13,19 +13,8 @@
 
 typedef enum {false, true} bool;
 
-print(char *array, int length){
-    printf("word_separation = [");
-    for (int i = 0; i < length; i++) { 
-        printf("%02x,", array[i]);
-    }
-    printf("]\n");
-}
-
-
-bool contains(int val, char arr[], size_t n) {
+bool contains(char val, char arr[], size_t n) {
     for (size_t i = 0; i < n; i++) {
-        /* printf("lista: %02x\n", arr[i]);
-        printf("hex: %02x\n", val); */
         if (arr[i] == val) return true;
     }
     return false;
@@ -39,9 +28,12 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    chdir("dataset");
-    char word_separation[16] = {0x20, 0x9, 0xa, 0xd, 0x21, 0x22, 0x28, 0x29, 0x2e, 0x2c, 0x3a, 0x3b, 0x3f, 0x5b, 0x5d, 0xe2};
-    print(word_separation, 16);
+
+    if(chdir("dataset") == -1) {
+        perror("chdir");
+        return 1;
+    }
+    char word_separation[16] = {0x20, 0x9, 0xa, 0xd, 0x21, 0x22, 0x28, 0x29, 0x2e, 0x2c, 0x3a, 0x3b, 0x3f, 0x5b, 0x5d, 0x2d};
 
     int i;
     for (i = 1; i < argc; i++) {
@@ -65,17 +57,16 @@ int main(int argc, char *argv[]) {
         // read file and get the content of the file in hexadecimal
         FILE *cmd = popen(all_cmd, "r");
         while (fgets(content, sizeof(content), cmd) != 0) {
-            char hex[100];
+            char * hex;;
             hex = strtok (content," ,.-");
 
             // splitting content by space
             while (hex != NULL) {
                 
-                // convert hexadecimal char * to 
-                int * hexadecimal = (int *)(hex);
-                /* printf("%ls", hexadecimal); */
+                // convert hexadecimal char * to hexadecimal char
+                char hexadecimal = (char) strtol(hex, NULL, 16);
 
-                if (contains((int) * hexadecimal, word_separation, 16)) {
+                if (contains(hexadecimal, word_separation, 16)) {
                     printf("separation char: ");
                     inWord = false;
                     new_word = false;

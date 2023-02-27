@@ -6,7 +6,7 @@
 
 //////////////// Compile and Run ///////////////
 //                                            //
-//  gcc -Wall -O3 -o countWords countWords.c  //
+//  gcc -Wall -O3 -o countWords versao_antiga.c  //
 //  ./countWords text0.txt                    //
 //                                            //
 //////////////////////////////////////////////// 
@@ -82,7 +82,6 @@ int main(int argc, char *argv[]) {
             }
         }
         pclose(cmd);
-        
         fclose(file);
 
         // printing the results
