@@ -6,7 +6,7 @@
 
 //////////////// Compile and Run ///////////////
 //                                            //
-//  gcc -Wall -O3 -o countWords versao_antiga.c  //
+//  gcc -Wall -O3 -o countWords version2.c    //
 //  ./countWords text0.txt                    //
 //                                            //
 //////////////////////////////////////////////// 
