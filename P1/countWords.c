@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
     setlocale(LC_ALL, "pt_PT.UTF-8");
 
     if (argc < 2) {
-        printf("[usage]: %s filenames\n", argv[0]);
+        printf("[usage]: %s file1 [file2 ...]\n", argv[0]);
         return 1;
     }
 
