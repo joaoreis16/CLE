@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    char *word_separation[20] = {"20", "09", "0a", "0d", "21", "22", "28", "29", "2e", "2c", "3a", "3b", "3f", "5b", "5d", "2d", "e2809c", "e2809d", "e28093", "e280a6"};
+    char *word_separation[22] = {"20", "09", "0a", "0d", "21", "22", "28", "29", "2e", "2c", "3a", "3b", "3f", "5b", "5d", "2d", "e2809c", "e2809d", "e28093", "e280a6", "c2ab", "c2bb"};
 
     FILE *file;
     int i;
@@ -96,6 +96,11 @@ int main(int argc, char *argv[]) {
             // printf("%0x\n", byte);
             sprintf(actual_char, "%02x", byte);   //  convert hexadecimal to string
 
+            if (total_bytes == 0) {
+                total_bytes = get_char_size(byte);
+                strcpy(last_char, "");
+            }
+
             if (total_bytes != 0) {
                 strcat(last_char, actual_char);
                 total_bytes = total_bytes - 1;
@@ -103,14 +108,14 @@ int main(int argc, char *argv[]) {
                 strcpy(actual_char, last_char);
             }
 
-            if (contains(actual_char, word_separation, 20)) {
+            if (contains(actual_char, word_separation, 22)) {
                 // printf("separation ");
                 inWord = false;
                 memset(first_occur, false, sizeof(first_occur));
 
             } else {
                 if (!inWord) {
-                    // printf("incrementou ");
+                    //printf("incrementou ");
                     nWords++;
                     inWord = true;
                 }
@@ -153,9 +158,9 @@ int main(int argc, char *argv[]) {
 
             }
 
-            if (get_char_size(byte) == 1) printf("%s\n", actual_char);
+            // if (get_char_size(byte) == 1) printf("%s\n", actual_char);
 
-            total_bytes = get_char_size(byte) - 1;
+            // total_bytes = get_char_size(byte) - 1;
             strcpy(last_char, actual_char); 
         }
         fclose(file); // Close the file
