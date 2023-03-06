@@ -95,10 +95,7 @@ int main(int argc, char *argv[]) {
     }
     printf("number of values = %d\n", N_values);
 
-    // int sequence[N_values];
-    int *sequence;
-    sequence = (int*)malloc(N_values * sizeof(int));
-
+    int *sequence = (int*)malloc(N_values * sizeof(int));
     int i = 0;
 
     // Read the contents of the file
