@@ -18,9 +18,6 @@ void print(int *val, int N) {
 void validate(int *val, int N) {
     int i;
     for (i = 0; i < N; i++) {
-        
-        /* printf("i   = %d\n", i);
-        printf("N-1 = %d\n", N - 1); */
 
         if (i == (N - 1))  {
             printf ("Everything is OK!\n");
