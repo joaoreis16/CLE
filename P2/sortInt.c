@@ -5,7 +5,7 @@
 //////////////////////////// Compile and Run ////////////////////////////
 //                                                                     //
 //  gcc -Wall -O3 -o sortInt sortInt.c                                 //
-//  ./sortInt ./sortInt datSeq32.bin                                   //
+//  ./sortInt datSeq32.bin                                             //
 //                                                                     //
 /////////////////////////////////////////////////////////////////////////
 
@@ -35,41 +35,41 @@ int main(int argc, char *argv[]) {
 
     FILE *file;
     char *filename = argv[1];
-    char buffer[4];
-    int int_buffer[1000];
-    size_t elements_read;
     
     // Open binary file for reading
     file = fopen(filename, "rb");
     
     if (file == NULL) {
-        printf("Error opening file");
+        printf("Error opening the file");
         return 1;
     }
-    
-    // Read the contents of the file
-    elements_read = fread(buffer, sizeof(char), 4, file);
-    int n = 32;
+
+    // Read the header of the binary file
+    int N_values = 0;
+    if (fread(&N_values, sizeof(int), 1, file) != 1) {
+        printf("Error reading the file");
+        return 1;
+    }
+    printf("number of values = %d\n", N_values);
+
+    int sequence[N_values];
     int i = 0;
-    while (elements_read == 4 && i < n) {
-        // Convert the four bytes into an integer
-        int value = (buffer[0] << 24) | (buffer[1] << 16) | (buffer[2] << 8) | buffer[3];
-        int_buffer[i] = value;
+
+    // Read the contents of the file
+    int num;
+    while(fread(&num, sizeof(int), 1, file) == 1) {
+        sequence[i] = num;
         i++;
-        
-        // Read the next four bytes from the file
-        elements_read = fread(buffer, sizeof(char), 4, file);
     }
     
     // Close the file
     fclose(file);
     
-    printf("Read %d integers.\n", i);
-    
     // Print the integers read from the file
-    for (int j = 0; j < i; j++) {
-        printf("%d\n", int_buffer[j]);
+    for (int j = 0; j < N_values; j++) {
+        printf("%d\n", sequence[j]);
     }
-    
+
+    validate(sequence, N_values);
     return 0;
 }
