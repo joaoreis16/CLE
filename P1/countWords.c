@@ -115,9 +115,10 @@ int main(int argc, char *argv[]) {
 
             } else {
                 if (!inWord) {
-                    //printf("incrementou ");
-                    nWords++;
-                    inWord = true;
+                    if (strcmp(actual_char, "27") != 0 && strcmp(actual_char, "e28098") != 0 && strcmp(actual_char, "e28099") != 0) {
+                        nWords++;
+                        inWord = true;
+                    }
                 }
 
                 if (isVowelA(actual_char)) {
