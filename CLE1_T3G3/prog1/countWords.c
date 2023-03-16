@@ -160,7 +160,6 @@ int zanza() {
 
 
 void get_valid_chunk() {
-
     int readBytes = 0;
     int i;
     int word_offset = 0;
@@ -176,9 +175,11 @@ void get_valid_chunk() {
 
         if (isWordSeparation(ch)) {
         }
+
         if (isWS(ch)) {
             word_offset = 0;
         }
+        
         word_offset += 1;
         chunkBuffer[readBytes++] = ch; // make Buffer global variable
     }  
