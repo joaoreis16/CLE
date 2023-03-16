@@ -4,6 +4,12 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include "shared.h"
+
+/** \brief max number of bytes per chunk */
+extern int maxBytesPerChunk;
+
+char *word_separation[22] = {"20", "09", "0a", "0d", "21", "22", "28", "29", "2e", "2c", "3a", "3b", "3f", "5b", "5d", "2d", "e2809c", "e2809d", "e28093", "e280a6", "c2ab", "c2bb"};
 
 int get_char_size(int byte) {
     if (byte < 192) {
@@ -53,9 +59,7 @@ bool isVowelY(char* c) {
 
 int zanza() {
 
-    char *word_separation[22] = {"20", "09", "0a", "0d", "21", "22", "28", "29", "2e", "2c", "3a", "3b", "3f", "5b", "5d", "2d", "e2809c", "e2809d", "e28093", "e280a6", "c2ab", "c2bb"};
-
-    FILE *file;
+    /* FILE *file;
     int i;
     for (i = 1; i < argc; i++) {
         char *filename = argv[i];
@@ -154,40 +158,60 @@ int zanza() {
         printf("N. of words with an\n");
         printf("%7s %7s %7s %7s %7s %7s\n", "A", "E", "I", "O", "U", "Y");
         printf("%7d %7d %7d %7d %7d %7d\n\n", nWordsA, nWordsE, nWordsI, nWordsO, nWordsU, nWordsY);
-    }
+    } */
     return 0;
 }
 
 
-void get_valid_chunk() {
-    int readBytes = 0;
-    int i;
-    int word_offset = 0;
-    char ch;
+void get_valid_chunk(struct ChunkData *data, struct File *file) {
+    int bytes_readed = 0;
+    int word_offset  = 0;
+    unsigned char actual_char[50];
+    char last_char[50];
+    int total_bytes = 0;
 
-    while(readBytes < MAX_CHUNK_SIZE) {
-        ch = fgetc(textFiles[currentFile]);
+    while (bytes_readed < maxBytesPerChunk) {
+        int byte = fgetc(file->file);
+        sprintf(actual_char, "%02x", byte);   //  convert hexadecimal to string
 
-        if (ch == EOF) {
+        if (byte == EOF) {
             word_offset = 0;
-            currentFile++;
+            printf("fim da ratisse\n");
+            break;
         }
 
-        if (isWordSeparation(ch)) {
+        if (total_bytes == 0) {
+            total_bytes = get_char_size(byte);
+            strcpy(last_char, "");
         }
 
-        if (isWS(ch)) {
-            word_offset = 0;
-        }
+        // if char is multi-byte
+        if (total_bytes != 0) {
+            strcat(last_char, actual_char);
+            total_bytes--;
+            word_offset++;
+            if (total_bytes != 0) continue;
+            strcpy(actual_char, last_char);
+        } 
         
-        word_offset += 1;
-        chunkBuffer[readBytes++] = ch; // make Buffer global variable
-    }  
-    if (word_offset != 0) {
-        for (i = 0; i < word_offset; i++) {
-            chunkBuffer[MAX_CHUNK_SIZE - i] = '\0';
+        if (contains(actual_char, word_separation, 22)) {
+            word_offset = 0;
         }
-        fseek(textFiles[currentFile], - word_offset, SEEK_CUR);
+
+        int hex_val;
+        sscanf(actual_char, "%x", &hex_val);
+        char hex_char = (char) hex_val;
+
+        printf("%c\n", hex_char);
+
+        data->chunk[bytes_readed++] = hex_char;   // Fill chunk with content
     }
 
+    if(bytes_readed >= maxBytesPerChunk) printf("chegou ao limite\n");
+    if (word_offset != 0) {
+        for (int i = 0; i < word_offset; i++) {
+            data->chunk[maxBytesPerChunk - i] = '\0';
+        }
+        fseek(file->file, - word_offset, SEEK_CUR);
+    }
 }

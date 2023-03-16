@@ -64,11 +64,12 @@ int main(int argc, char *argv[]) {
   }
 
   // process command line arguments and set up variables
-  int n_workers = 4;     // number of worker threads
-  int M = 5;             // number max of files to be processed
-  char *filenames[M];    // array with M filenames
-  numFiles = 0;          // number of files to process
-  int opt;               // selected option
+  int n_workers = 4;            // number of worker threads
+  int M = 5;                    // number max of files to be processed
+  char *filenames[M];           // array with M filenames
+  numFiles = 0;                 // number of files to process
+  maxBytesPerChunk = 4 * 1000;  // max bytes per chunk (default 4)
+  int opt;                      // selected option
 
   do {
     switch ((opt = getopt(argc, argv, "hf:w:m:"))) {
@@ -100,7 +101,7 @@ int main(int argc, char *argv[]) {
           printUsage(argv[0]);
           return EXIT_FAILURE;
         }
-        maxBytesPerChunk = (int)atoi(optarg);
+        maxBytesPerChunk = (int)atoi(optarg) * 1000;
         break;
 
       case 'h': // help mode
@@ -180,7 +181,6 @@ static void *worker (void *worker_id) {
   get_chunk(id, chunk_data); 
 
 } 
-
 
 /**
  *  \brief Get the process time that has elapsed since last call of this time.
