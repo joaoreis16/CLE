@@ -4,8 +4,7 @@
  *  \brief Problem name: Text Processing with Multithreading.
  *
  *  The main objective of this program is to process files in order to obtain
- *  the number of words, and the number of words starting with a vowel and ending in
- *  a consonant.
+ *  the number of words, and the number of words containing with a vowel.
  *
  *  It is optimized by splitting the work between worker threads which after obtaining
  *  the chunk of the file from the shared region, perform the calculations and then save
@@ -14,22 +13,32 @@
  *  Both threads and the monitor are implemented using the pthread library which enables the creation of a
  *  monitor of the Lampson / Redell type.
  *
- *  \author Artur Romão and João Reis - March 2023
+ *  \author Artur Romão e João Reis - March 2023
+ */
+
+/** 
+ * \brief Role of the main thread 
+ * 
+ *   1. to get the text file names by processing the command line and storing them in 
+ *   the shared region
+ *
+ *   2. to create the worker threads and wait for their termination
+ *
+ *   3. to print the results of the processing.
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <stdbool.h>
 #include <pthread.h>
 #include <math.h>
 #include <time.h>
-#include <stdbool.h>
-#include <string.h>
-#include <libgen.h>
 
+#include "shared.h"
 
 /** \brief worker threads return status array */
-int *statusWorker;
+int *workers_status;
 
 /** \brief number of files to process */
 int numFiles;
@@ -37,144 +46,156 @@ int numFiles;
 /** \brief maximum number of bytes per chunk */
 int maxBytesPerChunk;
 
-static void printUsage(char *cmdName);
-
 /** \brief worker life cycle routine */
-static void *worker(void *id);
+static void *worker (void *id);
 
-/**
- *  \brief Main thread.
- *
- *  Design and flow of the main thread:
- *
- *  1 - Process the arguments from the command line.
- *
- *  2 - Initialize the shared region with the necessary structures (by passing the filenames).
- *
- *  3 - Create the worker threads.
- *
- *  4 - Wait for the worker threads to terminate.
- *
- *  5 - Print final results.
- *
- *  \param argc number of words of the command line
- *  \param argv list of words of the command line
- *
- *  \return status of operation
- */
-int main(int argc, char *argv[])
-{
-  struct timespec start, finish; /* time limits */
+/** \brief execution time measurement */
+static double get_delta_time(void);
 
-  /* timer starts */
-  clock_gettime(CLOCK_MONOTONIC_RAW, &start); /* begin of measurement */
+/** \brief print command usage */
+static void printUsage (char *cmdName);
 
-  /* process command line arguments and set up variables */
 
-  int i;                 /* counting variable */
-  maxBytesPerChunk = DB; /* maximum number of bytes each worker will process at a time */
-  int N = DN;            /* number of worker threads */
-  char *fileNames[M];    /* files to be processed (maximum of M) */
-  numFiles = 0;          /* number of files to process */
-  int opt;               /* selected option */
-  
+int main(int argc, char *argv[]) {
+
+  if (argc < 2) {
+    printUsage(argv[0]);
+    return 1;
+  }
+
+  // process command line arguments and set up variables
+  int n_workers = 4;     // number of worker threads
+  int M = 5;             // number max of files to be processed
+  char *filenames[M];    // array with M filenames
+  numFiles = 0;          // number of files to process
+  int opt;               // selected option
+
   do {
-    switch ((opt = getopt(argc, argv, "f:n:m:")))
-    {
-    case 'f': /* file name */
-      if (optarg[0] == '-')
-      {
-        fprintf(stderr, "%s: file name is missing\n", basename(argv[0]));
-        printUsage(basename(argv[0]));
+    switch ((opt = getopt(argc, argv, "hf:w:m:"))) {
+      case 'f': // file name
+        if (optarg[0] == '-') {
+          fprintf(stderr, "%s: file name is missing\n", argv[0]);
+          printUsage(argv[0]);
+          return EXIT_FAILURE;
+        }
+        if (numFiles == M) {
+          fprintf(stderr, "%s: can only process %d files at a time\n", argv[0], M);
+          return EXIT_FAILURE;
+        }
+        filenames[numFiles++] = optarg;
+        break;
+
+      case 'w': // n. of workers
+        if (atoi(optarg) < 1) {
+          fprintf(stderr, "%s: number of worker threads must be greater or equal than 1\n", argv[0]);
+          printUsage(argv[0]);
+          return EXIT_FAILURE;
+        }
+        n_workers = (int)atoi(optarg);
+        break;
+
+      case 'm': // n. of max bytes per chunk
+        if (atoi(optarg) != 4 && atoi(optarg) != 8) {
+          fprintf(stderr, "%s: number of bytes must be 4 or 8 kBytes\n", argv[0]);
+          printUsage(argv[0]);
+          return EXIT_FAILURE;
+        }
+        maxBytesPerChunk = (int)atoi(optarg);
+        break;
+
+      case 'h': // help mode
+        printUsage(argv[0]);
+        return EXIT_SUCCESS;
+
+      case '?': // invalid option
+        fprintf(stderr, "%s: invalid option\n", argv[0]);
+        printUsage(argv[0]);
         return EXIT_FAILURE;
-      }
-      if (numFiles == M)
-      {
-        fprintf(stderr, "%s: can only process %d files at a time\n", basename(argv[0]), M);
-        return EXIT_FAILURE;
-      }
-      fileNames[numFiles++] = optarg;
-      break;
-    case 'n': /* numeric argument */
-      if (atoi(optarg) < 1)
-      {
-        fprintf(stderr, "%s: number of threads must be greater or equal than 1\n", basename(argv[0]));
-        printUsage(basename(argv[0]));
-        return EXIT_FAILURE;
-      }
-      N = (int)atoi(optarg);
-      break;
-    case 'm': /* numeric argument */
-      if (atoi(optarg) < MIN)
-      {
-        fprintf(stderr, "%s: number of bytes must be greater or equal than %d\n", basename(argv[0]), MIN);
-        printUsage(basename(argv[0]));
-        return EXIT_FAILURE;
-      }
-      maxBytesPerChunk = (int)atoi(optarg);
-      break;
-    case 'h': /* help mode */
-      printUsage(basename(argv[0]));
-      return EXIT_SUCCESS;
-    case '?': /* invalid option */
-      fprintf(stderr, "%s: invalid option\n", basename(argv[0]));
-      printUsage(basename(argv[0]));
-      return EXIT_FAILURE;
-    case -1:
-      break;
+
+      case -1:
+        break;
     }
+
   } while (opt != -1);
 
-  if (argc == 1)
-  {
-    fprintf(stderr, "%s: invalid format\n", basename(argv[0]));
-    printUsage(basename(argv[0]));
+  // storing file names in the shared region
+  initialize(filenames);
+
+  workers_status = malloc(sizeof(int) * n_workers);
+  pthread_t *pthread_workers;         // workers internal thread id array (alterar este comment)
+  unsigned int *workers;              // workers application defined thread id array 
+  int *pStatus;                       // pointer to execution status 
+
+  if (((pthread_workers = malloc (n_workers * sizeof (pthread_t))) == NULL) || ((workers = malloc (n_workers * sizeof (int))) == NULL)) { 
+    fprintf (stderr, "[error] on allocating space to both internal / external producer / consumer id arrays\n");
     return EXIT_FAILURE;
   }
 
-  statusWorker = malloc(sizeof(int) * N); /* workers status */
-  pthread_t tIdWorker[N];                 /* workers internal thread id array */
-  unsigned int workerId[N];               /* workers application defined thread id array */
-  int *status_p;                          /* pointer to execution status */
+  // start counting the execution time
+  (void) get_delta_time ();
 
-  /* set up structures to be used on the monitor and shared regions */
+  // creating worker threads 
+  for (int i = 0; i < n_workers; i++) {
+    workers[i] = i;   // add new worker with ID i
 
-  putInitialData(fileNames);
-
-  /* generation of worker threads */
-
-  for (i = 0; i < N; i++)
-  {
-    workerId[i] = i;
-
-    if (pthread_create(&tIdWorker[i], NULL, worker, &workerId[i]) != 0) /* thread worker */
-    {
-      perror("error on creating thread worker");
-      exit(EXIT_FAILURE);
+    if (pthread_create(&pthread_workers[i], NULL, worker, &workers[i]) != 0) {
+      perror("[error] on creating thread worker");
+      return EXIT_FAILURE;
+    }
+  }
+ 
+  // waiting for the termination of the worker threads
+  for (int i = 0; i < n_workers; i++) {
+    if (pthread_join(pthread_workers[i], (void *)&pStatus) != 0) {
+      perror("[error] on waiting for worker thread");
+      return EXIT_FAILURE;
     }
   }
 
-  /* waiting for the termination of the worker threads */
+  float exec_time = get_delta_time();
+  printf ("\nExecution time = %.6fs\n", exec_time);
 
-  for (i = 0; i < N; i++)
-  {
-    if (pthread_join(tIdWorker[i], (void *)&status_p) != 0)
-    {
-      perror("error on waiting for worker thread");
-      exit(EXIT_FAILURE);
-    }
+  return EXIT_SUCCESS;
+}
+
+
+/**
+ *  \brief Function producer.
+ *
+ *  While there is work to be carried out
+ *     − to request chunks of text of some text file
+ *     − to process them
+ *     − to return the partial results.
+ *
+ *  \param worker_id pointer to application defined producer identification
+ */
+static void *worker (void *worker_id) {
+  unsigned int id = *((unsigned int *)worker_id); // worker id
+
+  // structure that has file's chunk to process and the results of that processing 
+  struct ChunkData *chunk_data = (struct ChunkData *)malloc(sizeof(struct ChunkData));
+  chunk_data->chunk = (unsigned char *)malloc(maxBytesPerChunk * sizeof(unsigned char));
+
+  // get result of the chunk processing
+  get_chunk(id, chunk_data); 
+
+} 
+
+
+/**
+ *  \brief Get the process time that has elapsed since last call of this time.
+ *
+ *  \return process elapsed time
+ */
+static double get_delta_time(void) {
+  static struct timespec t0, t1;
+
+  t0 = t1;
+  if(clock_gettime (CLOCK_MONOTONIC, &t1) != 0) {
+    perror ("clock_gettime");
+    exit(1);
   }
-
-  /* timer ends */
-  clock_gettime(CLOCK_MONOTONIC_RAW, &finish); /* end of measurement */
-
-  /* print the results of the text processing */
-  printResults();
-
-  /* calculate the elapsed time */
-  printf("\nElapsed time = %.6f s\n", (finish.tv_sec - start.tv_sec) / 1.0 + (finish.tv_nsec - start.tv_nsec) / 1000000000.0);
-
-  exit(EXIT_SUCCESS);
+  return (double) (t1.tv_sec - t0.tv_sec) + 1.0e-9 * (double) (t1.tv_nsec - t0.tv_nsec);
 }
 
 
@@ -185,13 +206,12 @@ int main(int argc, char *argv[])
  *
  *  \param cmdName string with the name of the command
  */
-static void printUsage(char *cmdName)
-{
-  fprintf(stderr, "\nSynopsis: %s OPTIONS [filename / number of threads / maximum number of bytes per chunk]\n"
-                  "  OPTIONS:\n"
-                  "  -h      --- print this help\n"
-                  "  -f      --- filename to process\n"
-                  "  -n      --- number of threads\n"
-                  "  -m      --- maximum number of bytes per chunk\n",
-          cmdName);
+
+static void printUsage(char *cmdName) {
+  fprintf (stderr, "\nSynopsis: %s [OPTIONS]\n"
+           "  OPTIONS:\n"
+           "  -f filename    --- set the file name (max usage: 5)\n"
+           "  -w nWorkers    --- set the number of workers (default: 4)\n"
+           "  -m BytesChunk  --- set the number of bytes per chunk (default: 4)\n"
+           "  -h             --- print this help\n", cmdName);
 }

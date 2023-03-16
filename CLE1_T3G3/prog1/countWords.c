@@ -2,16 +2,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdbool.h>
 
-//////////////////////////// Compile and Run ////////////////////////////
-//                                                                     //
-//  gcc -Wall -O3 -o countWords countWords.c                           //
-//  ./countWords text.txt                                              //
-//  ./countWords text0.txt text1.txt text2.txt text3.txt text4.txt     //
-//                                                                     //
-/////////////////////////////////////////////////////////////////////////
-
-typedef enum {false, true} bool;
 
 int get_char_size(int byte) {
     if (byte < 192) {
@@ -59,17 +51,7 @@ bool isVowelY(char* c) {
     return (strcmp(c, "59") == 0 || strcmp(c, "79") == 0);
 }
 
-int main(int argc, char *argv[]) {
-
-    if (argc < 2) {
-        printf("[usage]: %s file1 [file2 ...]\n", argv[0]);
-        return 1;
-    }
-
-    if (chdir("dataset") == -1) {
-        perror("chdir");
-        return 1;
-    }
+int zanza() {
 
     char *word_separation[22] = {"20", "09", "0a", "0d", "21", "22", "28", "29", "2e", "2c", "3a", "3b", "3f", "5b", "5d", "2d", "e2809c", "e2809d", "e28093", "e280a6", "c2ab", "c2bb"};
 
@@ -174,4 +156,37 @@ int main(int argc, char *argv[]) {
         printf("%7d %7d %7d %7d %7d %7d\n\n", nWordsA, nWordsE, nWordsI, nWordsO, nWordsU, nWordsY);
     }
     return 0;
+}
+
+
+void get_valid_chunk() {
+
+    int readBytes = 0;
+    int i;
+    int word_offset = 0;
+    char ch;
+
+    while(readBytes < MAX_CHUNK_SIZE) {
+        ch = fgetc(textFiles[currentFile]);
+
+        if (ch == EOF) {
+            word_offset = 0;
+            currentFile++;
+        }
+
+        if (isWordSeparation(ch)) {
+        }
+        if (isWS(ch)) {
+            word_offset = 0;
+        }
+        word_offset += 1;
+        chunkBuffer[readBytes++] = ch; // make Buffer global variable
+    }  
+    if (word_offset != 0) {
+        for (i = 0; i < word_offset; i++) {
+            chunkBuffer[MAX_CHUNK_SIZE - i] = '\0';
+        }
+        fseek(textFiles[currentFile], - word_offset, SEEK_CUR);
+    }
+
 }
