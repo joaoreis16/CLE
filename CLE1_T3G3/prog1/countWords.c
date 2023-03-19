@@ -202,16 +202,26 @@ void get_valid_chunk(struct ChunkData *data, struct File *file) {
         sscanf(actual_char, "%x", &hex_val);
         char hex_char = (char) hex_val;
 
-        printf("%c\n", hex_char);
+        // printf("%c", hex_char);
 
         data->chunk[bytes_readed++] = hex_char;   // Fill chunk with content
     }
 
-    if(bytes_readed >= maxBytesPerChunk) printf("chegou ao limite\n");
+    if(bytes_readed >= maxBytesPerChunk) printf("\n>> chegou ao limite\n");
+
     if (word_offset != 0) {
         for (int i = 0; i < word_offset; i++) {
             data->chunk[maxBytesPerChunk - i] = '\0';
         }
         fseek(file->file, - word_offset, SEEK_CUR);
     }
+
+    printf("\n>> print da chunk\n");
+    for(int loop = 0; loop < maxBytesPerChunk; loop++)
+        printf("%c", (char)data->chunk[loop]);
+
+
+    ////// problemas
+    // word_offset está mal por 1 [exemplo]: a manquisse q (está a acabar com a letra de inicio)
+    // o fseek não está a funcionar, está sempre a começar no inicio do file
 }

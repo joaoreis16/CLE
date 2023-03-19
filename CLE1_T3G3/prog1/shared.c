@@ -84,8 +84,6 @@ void initialize(char *filenames[]) {
  */
 void get_chunk(unsigned int id, struct ChunkData *data) {
 
-  printf("Starting worker thread with id = %d\n", id);
-
   // enter monitor 
   if (pthread_mutex_lock(&accessCR) != 0) {
     workers_status[id] = -1;
@@ -94,6 +92,7 @@ void get_chunk(unsigned int id, struct ChunkData *data) {
   }
 
   workers_status[id] = 1;
+  printf("\n\n>> Starting worker thread with id = %d\n", id);
 
   struct File *file = (file_data + file_index);
 
