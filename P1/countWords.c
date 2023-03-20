@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    char *word_separation[22] = {"20", "09", "0a", "0d", "21", "22", "28", "29", "2e", "2c", "3a", "3b", "3f", "5b", "5d", "2d", "e2809c", "e2809d", "e28093", "e280a6", "c2ab", "c2bb"};
+    char *word_separation[23] = {"20", "09", "0a", "0d", "21", "22", "28", "29", "2e", "2c", "3a", "3b", "3f", "5b", "5d", "2d", "e2809c", "e2809d", "e28093", "e280a6", "c2ab", "c2bb", "e28094"};
 
     FILE *file;
     int i;
@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
                 strcpy(actual_char, last_char);
             }
 
-            if (contains(actual_char, word_separation, 22)) {
+            if (contains(actual_char, word_separation, 23)) {
                 // printf("separation ");
                 inWord = false;
                 memset(first_occur, false, sizeof(first_occur));
