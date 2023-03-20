@@ -72,7 +72,6 @@ void initialize(char *filenames[]) {
     (file_data + i)->file_name = filenames[i];
     (file_data + i)->file = NULL;
   }
-
 }
 
 /**
@@ -85,16 +84,15 @@ void initialize(char *filenames[]) {
  */
 void get_chunk(unsigned int id, struct ChunkData *data) {
 
-  printf("Starting worker thread with id = %d\n", id);
-
   // enter monitor 
-  if (pthread_mutex_trylock(&accessCR) != 0) {
+  if (pthread_mutex_lock(&accessCR) != 0) {
     workers_status[id] = -1;
     perror("[error] on entering monitor(CF)");
     pthread_exit(NULL);
   }
 
   workers_status[id] = 1;
+  printf("\n\n>> Starting worker thread with id = %d\n", id);
 
   struct File *file = (file_data + file_index);
 
@@ -105,21 +103,21 @@ void get_chunk(unsigned int id, struct ChunkData *data) {
   }
 
   data->is_finished = false; 
-  data->chunk_size = fread(data->chunk, 1, maxBytesPerChunk, file->file); // maxBytesPerChunk - 7 
+  // data->chunk_size = fread(data->chunk, 1, maxBytesPerChunk-7, file->file); // maxBytesPerChunk - 7 
 
 
   // current file has reached the end
-  /* if (data->chunk_size < maxBytesPerChunk) {
+  /* 
+  if (data->chunk_size < maxBytesPerChunk) {
     file_index++;              // update the current file being processed index 
     fclose(file->file);
 
   } else {
 
-
   } */
+   
 
-
-  get_valid_chunk();
+  get_valid_chunk(data, file);
 
   // exit monitor
   if (pthread_mutex_unlock(&accessCR) != 0) {
@@ -127,4 +125,5 @@ void get_chunk(unsigned int id, struct ChunkData *data) {
     perror("[error] on exting monitor(CF)");
     pthread_exit(NULL);
   }
+  workers_status[id] = 0;
 }
