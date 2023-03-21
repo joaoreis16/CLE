@@ -175,11 +175,24 @@ static void *worker (void *worker_id) {
 
   // structure that has file's chunk to process and the results of that processing 
   struct ChunkData *chunk_data = (struct ChunkData *)malloc(sizeof(struct ChunkData));
-  chunk_data->chunk = (unsigned char *)malloc(maxBytesPerChunk * sizeof(unsigned char));
+  chunk_data->chunk = (unsigned int *)malloc(maxBytesPerChunk * sizeof(unsigned int));
+  chunk_data->all_work_done = false;
 
-  // get result of the chunk processing
-  get_chunk(id, chunk_data); 
+  while (true) {
+    // get a valid text chunk
+    get_chunk(id, chunk_data); 
 
+    // get result of the chunk processing
+    process_chunk(id, chunk_data);
+
+    // update counters
+    update_counters(id, chunk_data);
+
+    if (chunk_data->all_work_done) break;
+  }
+
+  free(chunk_data); // deallocate the structure memory
+  pthread_exit(&workers_status[id]);
 } 
 
 /**

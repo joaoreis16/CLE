@@ -9,7 +9,7 @@
 /** \brief max number of bytes per chunk */
 extern int maxBytesPerChunk;
 
-char *word_separation[22] = {"20", "09", "0a", "0d", "21", "22", "28", "29", "2e", "2c", "3a", "3b", "3f", "5b", "5d", "2d", "e2809c", "e2809d", "e28093", "e280a6", "c2ab", "c2bb"};
+char *word_separation[24] = {"00", "20", "09", "0a", "0d", "21", "22", "28", "29", "2e", "2c", "3a", "3b", "3f", "5b", "5d", "2d", "e2809c", "e2809d", "e28093", "e280a6", "c2ab", "c2bb", "e28094"};
 
 int get_char_size(int byte) {
     if (byte < 192) {
@@ -57,109 +57,92 @@ bool isVowelY(char* c) {
     return (strcmp(c, "59") == 0 || strcmp(c, "79") == 0);
 }
 
-int zanza() {
+void count_words(struct ChunkData *data) {
 
-    /* FILE *file;
-    int i;
-    for (i = 1; i < argc; i++) {
-        char *filename = argv[i];
-        file = fopen(filename, "rb"); // Open the file in binary read mode
+    bool inWord = false;
+    int nWords = 0; int nWordsA = 0; int nWordsE = 0; int nWordsI = 0; int nWordsO = 0; int nWordsU = 0; int nWordsY = 0;
+    int total_bytes = 0;
+    char actual_char[50];
+    char last_char[50];
+    bool first_occur[6] = {false, false, false, false, false, false};
 
-        if (file == NULL) { // Check if the file exists or not
-            printf("Error: File does not exist\n");
-            return 0;
+    for(int k = 0; k < maxBytesPerChunk; k++) {
+        int byte = data->chunk[k];
+        
+        sprintf(actual_char, "%02x", byte);   //  convert hexadecimal to string
+
+        if (total_bytes == 0) {
+            total_bytes = get_char_size(byte);
+            strcpy(last_char, "");
         }
 
-        bool inWord = false;
-        int nWords = 0; int nWordsA = 0; int nWordsE = 0; int nWordsI = 0; int nWordsO = 0; int nWordsU = 0; int nWordsY = 0;
-        int total_bytes = 0;
-        char actual_char[50];
-        char last_char[50];
-        bool first_occur[6] = {false, false, false, false, false, false};
+        if (total_bytes != 0) {
+            strcat(last_char, actual_char);
+            total_bytes = total_bytes - 1;
+            if (total_bytes != 0) continue;
+            strcpy(actual_char, last_char);
+        }
 
-        int byte;
-        while ((byte = fgetc(file)) != EOF) {
-            // printf("%0x\n", byte);
-            sprintf(actual_char, "%02x", byte);   //  convert hexadecimal to string
+        if (contains(actual_char, word_separation, 24)) {
+            inWord = false;
+            memset(first_occur, false, sizeof(first_occur));
 
-            if (total_bytes == 0) {
-                total_bytes = get_char_size(byte);
-                strcpy(last_char, "");
-            }
-
-            if (total_bytes != 0) {
-                strcat(last_char, actual_char);
-                total_bytes = total_bytes - 1;
-                if (total_bytes != 0) continue;
-                strcpy(actual_char, last_char);
-            }
-
-            if (contains(actual_char, word_separation, 22)) {
-                // printf("separation ");
-                inWord = false;
-                memset(first_occur, false, sizeof(first_occur));
-
-            } else {
-                if (!inWord) {
-                    //printf("incrementou ");
+        } else {
+            if (!inWord) {
+                if (strcmp(actual_char, "27") != 0 && strcmp(actual_char, "e28098") != 0 && strcmp(actual_char, "e28099") != 0) {
                     nWords++;
                     inWord = true;
                 }
-
-                if (isVowelA(actual_char)) {
-                    if (!first_occur[0]) {
-                        nWordsA++;
-                        first_occur[0] = true;
-                    }
-                } else if (isVowelE(actual_char)) {
-                    if (!first_occur[1]) {
-                        nWordsE++;
-                        first_occur[1] = true;
-                    }
-
-                } else if (isVowelI(actual_char)) {
-                    if (!first_occur[2]) {
-                        nWordsI++;
-                        first_occur[2] = true;
-                    }
-
-                } else if (isVowelO(actual_char)) {
-                    if (!first_occur[3]) {
-                        nWordsO++;
-                        first_occur[3] = true;
-                    }
-
-                } else if (isVowelU(actual_char)) {
-                    if (!first_occur[4]) {
-                        nWordsU++;
-                        first_occur[4] = true;
-                    }
-
-                } else if (isVowelY(actual_char)) {
-                    if (!first_occur[5]) {
-                        nWordsY++;
-                        first_occur[5] = true;
-                    }
-                }
-
             }
 
-            // if (get_char_size(byte) == 1) printf("%s\n", actual_char);
-            // total_bytes = get_char_size(byte) - 1;
-            
-            strcpy(last_char, actual_char); 
-        }
-        fclose(file); // Close the file
+            if (isVowelA(actual_char)) {
+                if (!first_occur[0]) {
+                    nWordsA++;
+                    first_occur[0] = true;
+                }
+            } else if (isVowelE(actual_char)) {
+                if (!first_occur[1]) {
+                    nWordsE++;
+                    first_occur[1] = true;
+                }
 
-        printf("\n");
-        // printing the results
-        printf("File name: %s\n", filename);
-        printf("Total number of words = %d\n", nWords);
-        printf("N. of words with an\n");
-        printf("%7s %7s %7s %7s %7s %7s\n", "A", "E", "I", "O", "U", "Y");
-        printf("%7d %7d %7d %7d %7d %7d\n\n", nWordsA, nWordsE, nWordsI, nWordsO, nWordsU, nWordsY);
-    } */
-    return 0;
+            } else if (isVowelI(actual_char)) {
+                if (!first_occur[2]) {
+                    nWordsI++;
+                    first_occur[2] = true;
+                }
+
+            } else if (isVowelO(actual_char)) {
+                if (!first_occur[3]) {
+                    nWordsO++;
+                    first_occur[3] = true;
+                }
+
+            } else if (isVowelU(actual_char)) {
+                if (!first_occur[4]) {
+                    nWordsU++;
+                    first_occur[4] = true;
+                }
+
+            } else if (isVowelY(actual_char)) {
+                if (!first_occur[5]) {
+                    nWordsY++;
+                    first_occur[5] = true;
+                }
+            }
+
+        }
+        strcpy(last_char, actual_char); 
+    }
+
+    data->nWords  = nWords;
+    data->nWordsA = nWordsA;
+    data->nWordsE = nWordsE;
+    data->nWordsI = nWordsI;
+    data->nWordsO = nWordsO;
+    data->nWordsU = nWordsU;
+    data->nWordsY = nWordsY;
+
 }
 
 
@@ -176,7 +159,8 @@ void get_valid_chunk(struct ChunkData *data, struct File *file) {
 
         if (byte == EOF) {
             word_offset = 0;
-            printf("fim da ratisse\n");
+            // printf("fim da ficheiro\n");
+            data->is_finished = true;
             break;
         }
 
@@ -188,29 +172,26 @@ void get_valid_chunk(struct ChunkData *data, struct File *file) {
         // if char is multi-byte
         if (total_bytes != 0) {
             strcat(last_char, actual_char);
+            
             total_bytes--;
             word_offset++;
-            if (total_bytes != 0) continue;
+
+            if (total_bytes != 0) {
+                data->chunk[bytes_readed++] = byte;   // Fill chunk with content
+                continue;
+            }
             strcpy(actual_char, last_char);
         } 
         
-        if (contains(actual_char, word_separation, 22)) {
+        if (contains(actual_char, word_separation, 24)) {
             word_offset = 0;
         }
 
-        int hex_val;
-        sscanf(actual_char, "%x", &hex_val);
-        char hex_char = (char) hex_val;
-
-        // printf("%c", hex_char);
-
-        data->chunk[bytes_readed++] = hex_char;   // Fill chunk with content
+        data->chunk[bytes_readed++] = byte;   // Fill chunk with content
     }
 
-    if(bytes_readed >= maxBytesPerChunk) printf("\n>> chegou ao limite\n");
-
     if (word_offset != 0) {
-        for (int i = 0; i < word_offset; i++) {
+        for (int i = 1; i <= word_offset; i++) {
             data->chunk[maxBytesPerChunk - i] = '\0';
         }
         fseek(file->file, - word_offset, SEEK_CUR);
@@ -220,8 +201,4 @@ void get_valid_chunk(struct ChunkData *data, struct File *file) {
     for(int loop = 0; loop < maxBytesPerChunk; loop++)
         printf("%c", (char)data->chunk[loop]);
 
-
-    ////// problemas
-    // word_offset está mal por 1 [exemplo]: a manquisse q (está a acabar com a letra de inicio)
-    // o fseek não está a funcionar, está sempre a começar no inicio do file
 }

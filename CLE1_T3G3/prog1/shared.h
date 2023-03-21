@@ -63,9 +63,8 @@ struct File {
 struct ChunkData {
   int index;
   bool is_finished;
-  int last_char;
-  unsigned char *chunk;
-  int chunk_size;
+  bool all_work_done;
+  unsigned int *chunk;
   int nWords;
   int nWordsA;
   int nWordsE;
