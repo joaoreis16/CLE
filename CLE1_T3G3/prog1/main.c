@@ -46,6 +46,9 @@ int numFiles;
 /** \brief maximum number of bytes per chunk */
 int maxBytesPerChunk;
 
+/** \brief if all work is done */
+bool all_work_done;
+
 /** \brief worker life cycle routine */
 static void *worker (void *id);
 
@@ -70,6 +73,7 @@ int main(int argc, char *argv[]) {
   numFiles = 0;                 // number of files to process
   maxBytesPerChunk = 4 * 1000;  // max bytes per chunk (default 4)
   int opt;                      // selected option
+  all_work_done = false;        // if all work are done 
 
   do {
     switch ((opt = getopt(argc, argv, "hf:w:m:"))) {
@@ -153,6 +157,9 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  // print final results
+  print_results();
+
   float exec_time = get_delta_time();
   printf ("\nExecution time = %.6fs\n", exec_time);
 
@@ -161,14 +168,14 @@ int main(int argc, char *argv[]) {
 
 
 /**
- *  \brief Function producer.
+ *  \brief Function worker.
  *
  *  While there is work to be carried out
  *     − to request chunks of text of some text file
  *     − to process them
  *     − to return the partial results.
  *
- *  \param worker_id pointer to application defined producer identification
+ *  \param worker_id pointer to application defined worker identification
  */
 static void *worker (void *worker_id) {
   unsigned int id = *((unsigned int *)worker_id); // worker id
@@ -176,7 +183,6 @@ static void *worker (void *worker_id) {
   // structure that has file's chunk to process and the results of that processing 
   struct ChunkData *chunk_data = (struct ChunkData *)malloc(sizeof(struct ChunkData));
   chunk_data->chunk = (unsigned int *)malloc(maxBytesPerChunk * sizeof(unsigned int));
-  chunk_data->all_work_done = false;
 
   while (true) {
     // get a valid text chunk
@@ -188,8 +194,12 @@ static void *worker (void *worker_id) {
     // update counters
     update_counters(id, chunk_data);
 
-    if (chunk_data->all_work_done) break;
+    printf(">> (%d) Done! next...\n", id);
+    if (all_work_done) break;
+  
   }
+  
+  workers_status[id] = EXIT_SUCCESS;
 
   free(chunk_data); // deallocate the structure memory
   pthread_exit(&workers_status[id]);

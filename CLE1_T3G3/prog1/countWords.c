@@ -60,7 +60,7 @@ bool isVowelY(char* c) {
 void count_words(struct ChunkData *data) {
 
     bool inWord = false;
-    int nWords = 0; int nWordsA = 0; int nWordsE = 0; int nWordsI = 0; int nWordsO = 0; int nWordsU = 0; int nWordsY = 0;
+    data->nWords = 0; data->nWordsA = 0; data->nWordsE = 0; data->nWordsI = 0; data->nWordsO = 0; data->nWordsU = 0; data->nWordsY = 0;
     int total_bytes = 0;
     char actual_char[50];
     char last_char[50];
@@ -83,6 +83,8 @@ void count_words(struct ChunkData *data) {
             strcpy(actual_char, last_char);
         }
 
+        printf("%s\n", actual_char);
+
         if (contains(actual_char, word_separation, 24)) {
             inWord = false;
             memset(first_occur, false, sizeof(first_occur));
@@ -90,43 +92,43 @@ void count_words(struct ChunkData *data) {
         } else {
             if (!inWord) {
                 if (strcmp(actual_char, "27") != 0 && strcmp(actual_char, "e28098") != 0 && strcmp(actual_char, "e28099") != 0) {
-                    nWords++;
+                    data->nWords++;
                     inWord = true;
                 }
             }
 
             if (isVowelA(actual_char)) {
                 if (!first_occur[0]) {
-                    nWordsA++;
+                    data->nWordsA++;
                     first_occur[0] = true;
                 }
             } else if (isVowelE(actual_char)) {
                 if (!first_occur[1]) {
-                    nWordsE++;
+                    data->nWordsE++;
                     first_occur[1] = true;
                 }
 
             } else if (isVowelI(actual_char)) {
                 if (!first_occur[2]) {
-                    nWordsI++;
+                    data->nWordsI++;
                     first_occur[2] = true;
                 }
 
             } else if (isVowelO(actual_char)) {
                 if (!first_occur[3]) {
-                    nWordsO++;
+                    data->nWordsO++;
                     first_occur[3] = true;
                 }
 
             } else if (isVowelU(actual_char)) {
                 if (!first_occur[4]) {
-                    nWordsU++;
+                    data->nWordsU++;
                     first_occur[4] = true;
                 }
 
             } else if (isVowelY(actual_char)) {
                 if (!first_occur[5]) {
-                    nWordsY++;
+                    data->nWordsY++;
                     first_occur[5] = true;
                 }
             }
@@ -134,32 +136,23 @@ void count_words(struct ChunkData *data) {
         }
         strcpy(last_char, actual_char); 
     }
-
-    data->nWords  = nWords;
-    data->nWordsA = nWordsA;
-    data->nWordsE = nWordsE;
-    data->nWordsI = nWordsI;
-    data->nWordsO = nWordsO;
-    data->nWordsU = nWordsU;
-    data->nWordsY = nWordsY;
-
 }
 
 
 void get_valid_chunk(struct ChunkData *data, struct File *file) {
-    int bytes_readed = 0;
+    int bytes_read = 0;
     int word_offset  = 0;
     unsigned char actual_char[50];
     char last_char[50];
     int total_bytes = 0;
 
-    while (bytes_readed < maxBytesPerChunk) {
+    while (bytes_read < maxBytesPerChunk) {
         int byte = fgetc(file->file);
         sprintf(actual_char, "%02x", byte);   //  convert hexadecimal to string
 
         if (byte == EOF) {
             word_offset = 0;
-            // printf("fim da ficheiro\n");
+            printf("[ALL FILE READ]\n");
             data->is_finished = true;
             break;
         }
@@ -177,7 +170,7 @@ void get_valid_chunk(struct ChunkData *data, struct File *file) {
             word_offset++;
 
             if (total_bytes != 0) {
-                data->chunk[bytes_readed++] = byte;   // Fill chunk with content
+                data->chunk[bytes_read++] = byte;   // Fill chunk with content
                 continue;
             }
             strcpy(actual_char, last_char);
@@ -187,18 +180,16 @@ void get_valid_chunk(struct ChunkData *data, struct File *file) {
             word_offset = 0;
         }
 
-        data->chunk[bytes_readed++] = byte;   // Fill chunk with content
+        data->chunk[bytes_read++] = byte;   // Fill chunk with content
     }
 
-    if (word_offset != 0) {
-        for (int i = 1; i <= word_offset; i++) {
-            data->chunk[maxBytesPerChunk - i] = '\0';
-        }
-        fseek(file->file, - word_offset, SEEK_CUR);
+    for (int i = 1; i <= word_offset; i++) {
+        data->chunk[maxBytesPerChunk - i] = '\0';
     }
+    if (word_offset != 0) fseek(file->file, - word_offset, SEEK_CUR);
 
-    printf("\n>> print da chunk\n");
-    for(int loop = 0; loop < maxBytesPerChunk; loop++)
-        printf("%c", (char)data->chunk[loop]);
+    printf(">> printing valid chunk\n");
+    for (int loop = 0; loop < maxBytesPerChunk; loop++) printf("%c", (char)data->chunk[loop]);
+    printf("|\n");
 
 }
