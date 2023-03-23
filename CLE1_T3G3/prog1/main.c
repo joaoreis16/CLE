@@ -4,7 +4,7 @@
  *  \brief Problem name: Text Processing with Multithreading.
  *
  *  The main objective of this program is to process files in order to obtain
- *  the number of words, and the number of words containing with a vowel.
+ *  the number of words, and the number of words containing a specific vowel.
  *
  *  It is optimized by splitting the work between worker threads which after obtaining
  *  the chunk of the file from the shared region, perform the calculations and then save
@@ -43,7 +43,7 @@ int numFiles;
 /** \brief maximum number of bytes per chunk */
 int maxBytesPerChunk;
 
-/** \brief if all work is done */
+/** \brief bool that is true if all work is done, false otherwise */
 bool all_work_done;
 
 /** \brief worker life cycle routine */
@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
   numFiles = 0;                 // number of files to process
   maxBytesPerChunk = 4 * 1000;  // max bytes per chunk (default 4)
   int opt;                      // selected option
-  all_work_done = false;        // if all work are done 
+  all_work_done = false;        // if all work is done 
 
   do {
     switch ((opt = getopt(argc, argv, "hf:w:m:"))) {
@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
   initialize(filenames);
 
   workers_status = malloc(sizeof(int) * n_workers);
-  pthread_t *pthread_workers;         // workers internal thread id array (alterar este comment)
+  pthread_t *pthread_workers;         // workers' threads array
   unsigned int *workers;              // workers application defined thread id array 
   int *pStatus;                       // pointer to execution status 
 
