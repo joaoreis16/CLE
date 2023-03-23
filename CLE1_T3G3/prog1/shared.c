@@ -101,8 +101,6 @@ void get_chunk(unsigned int id, struct ChunkData *data) {
     perror("[error] on entering monitor(CF)");
     pthread_exit(NULL);
   }
-  printf("\n[MUTEX] locked\n");
-  printf(">> (%d) Getting chunk...\n", id);
 
   if (!all_work_done) {
 
@@ -121,7 +119,6 @@ void get_chunk(unsigned int id, struct ChunkData *data) {
     data->is_finished = false; 
     data->index = file_index;              // file index on the shared region array structure
 
-    printf(">> (%d) Getting valid chunk...\n", id);
     get_valid_chunk(data, actual_file);
 
     if (data->is_finished) {
@@ -131,7 +128,6 @@ void get_chunk(unsigned int id, struct ChunkData *data) {
       
       // ou dizer ao próximo worker que já não há benfica trabalhar
       if (numFiles == file_index) {
-        printf(">> All work done!\n");
         all_work_done = true;
       }
     }
@@ -144,7 +140,6 @@ void get_chunk(unsigned int id, struct ChunkData *data) {
     perror("[error] on exting monitor(CF)");
     pthread_exit(NULL);
   }
-  printf("[MUTEX] unlocked\n\n");
 }
 
 
@@ -157,7 +152,6 @@ void get_chunk(unsigned int id, struct ChunkData *data) {
  *  \param data structure that will store the chunk of chars to process
  */
 void process_chunk(unsigned int id, struct ChunkData *data) {
-  printf(">> (%d) Processing chunk...\n", id);
   count_words(data);
 }
 
@@ -178,8 +172,6 @@ void update_counters(unsigned int id, struct ChunkData *data) {
     perror("[error] on entering monitor(CF)");
     pthread_exit(NULL);
   }
-  printf("\n[MUTEX] locked\n");
-  printf(">> (%d) Updating counters...\n", id);
 
   // update counters
   (file_data + data->index)->nWords  += data->nWords;
@@ -197,7 +189,6 @@ void update_counters(unsigned int id, struct ChunkData *data) {
     perror("[error] on exting monitor(CF)");
     pthread_exit(NULL);
   }
-  printf("[MUTEX] unlocked\n\n");
 }
 
 
@@ -213,7 +204,6 @@ void reset_struct(struct ChunkData *data) {
   data->is_finished = false;
   data->nWords = 0; data->nWordsA = 0; data->nWordsE = 0; data->nWordsI = 0; data->nWordsO = 0; data->nWordsU = 0; data->nWordsY = 0;
   memset(data->chunk, 0, maxBytesPerChunk * sizeof(unsigned int));
-
 }
 
 

@@ -20,14 +20,14 @@
  *
  *  \param byte UTF8 encoded character
  *
- *  \return size of the char readed.
+ *  \return size of the read char.
  */
 int get_char_size(int byte);
 
 /**
  *  \brief Check if the char is a separation character.
  *
- *  \param val char readed
+ *  \param val char read
  *
  *  \return true if the char is a separation char, false if not.
  */
@@ -88,11 +88,15 @@ bool isVowelU(char* c);
 bool isVowelY(char* c);
 
 /**
- *  \brief Transforms some special characters to a more general character.
+ *  \brief Performs text processing of a chunk.
  *
- *  \param ch UTF8 encoded character
+ *  Counts the number of words, and the words containing a specific vowel.
+
+ *  Operation executed by workers.
  *
- *  \return general representation of the given character.
+ *  \param data structure that contains the data needed to process
+ *  and will be filled with the results obtained
+ *  \param file structure that stores the final results of the file processing
  */
 void get_valid_chunk(struct ChunkData *data, struct File *file);
 
@@ -100,11 +104,8 @@ void get_valid_chunk(struct ChunkData *data, struct File *file);
 /**
  *  \brief Performs text processing of a chunk.
  *
- *  Counts the number of words, and the words containing a vowel.
- *
- *  Needs to know the previous character to see if the previous chunk was inside a word
- *  and also if it was and the word ends with the next character, to see if it was a consonant.
- *
+ *  Counts the number of words, and the words containing a specific vowel.
+
  *  Operation executed by workers.
  *
  *  \param data structure that contains the data needed to process

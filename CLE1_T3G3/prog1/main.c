@@ -158,7 +158,7 @@ int main(int argc, char *argv[]) {
   print_results();
 
   float exec_time = get_delta_time();
-  printf("\nExecution time = %.6fs\n", exec_time);
+  printf("Execution time = %.6fs\n", exec_time);
 
   return EXIT_SUCCESS;
 }
@@ -194,7 +194,6 @@ static void *worker (void *worker_id) {
     // reset struct variables
     reset_struct(chunk_data);
 
-    printf(">> (%d) Done! next...\n", id);
     if (all_work_done) break;
   }
   

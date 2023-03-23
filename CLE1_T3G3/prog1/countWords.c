@@ -134,7 +134,7 @@ bool isVowelY(char* c) {
 /**
  *  \brief Performs text processing of a chunk.
  *
- *  Counts the number of words, and the words containing a vowel.
+ *  Counts the number of words, and the words containing a specific vowel.
 
  *  Operation executed by workers.
  *
@@ -142,7 +142,6 @@ bool isVowelY(char* c) {
  *  and will be filled with the results obtained
  */
 void count_words(struct ChunkData *data) {
-
     bool inWord = false;
     data->nWords = 0; data->nWordsA = 0; data->nWordsE = 0; data->nWordsI = 0; data->nWordsO = 0; data->nWordsU = 0; data->nWordsY = 0;
     int total_bytes = 0;
@@ -220,7 +219,18 @@ void count_words(struct ChunkData *data) {
     }
 }
 
-
+/**
+ *  \brief Checks whether a chunk is valid or not.
+ *
+ *  Reads the whole chunk and checks if it ends in a middle of a word or in the middle
+ *  of a multi-byte character. 
+ *  Seeks the last valid position in the text so that the next worker can start from there.
+ *  Operation executed by workers.
+ *
+ *  \param data structure that contains the data needed to process
+ *  and will be filled with the results obtained
+ *  \param file structure that stores the final results of the file processing
+ */
 void get_valid_chunk(struct ChunkData *data, struct File *file) {
     int bytes_read = 0;
     int word_offset  = 0;
@@ -233,7 +243,6 @@ void get_valid_chunk(struct ChunkData *data, struct File *file) {
 
         if (byte == EOF) {
             word_offset = 0;
-            printf("[ALL FILE READ]\n");
             data->is_finished = true;
             break;
         }
@@ -259,9 +268,7 @@ void get_valid_chunk(struct ChunkData *data, struct File *file) {
             strcpy(actual_char, last_char);
         } 
         
-        if (is_separation(actual_char)) {
-            word_offset = 0;
-        }
+        if (is_separation(actual_char)) word_offset = 0;
 
         data->chunk[bytes_read++] = byte;   // Fill chunk with content
     }
@@ -270,9 +277,4 @@ void get_valid_chunk(struct ChunkData *data, struct File *file) {
         data->chunk[maxBytesPerChunk - i] = '\0';
     }
     fseek(file->file, - word_offset, SEEK_CUR);
-
-    /* printf(">> printing valid chunk\n");
-    for (int loop = 0; loop < maxBytesPerChunk; loop++) printf("%c", data->chunk[loop]);
-    printf("|\n"); */
-
 }
