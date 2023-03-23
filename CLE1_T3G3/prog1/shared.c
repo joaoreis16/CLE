@@ -4,41 +4,42 @@
  *  \brief Memory Shared Region for the text processing problem with multithreading.
  *
  *  Synchronization based on monitors.
- *  Both threads and the monitor are implemented using the pthread library which enables the creation of a
- *  monitor of the Lampson / Redell type.
  *
  *  Data transfer region implemented as a monitor.
  *
- *  This shared region will utilize the array of structures initialized by
+ *  This shared region will use the array of structures initialized by
  *  the main thread.
  * 
  *  Workers can access the shared region to obtain data to process from that
  *  array of structures. They can also store the partial results of the
  *  processing done.
  * 
- *  There is also a function to print out the final results, that should be
+ *  There is also a function to print out the final results, which is
  *  used after there is no more data to be processed.
  * 
  *  Monitored Methods:
- *     \li getData - operation carried out by worker threads.
- *     \li savePartialResults - operation carried out by worker threads.
+ *     \li get_chunk - operation carried out by worker threads to get a chunk of text (size = maxBytesPerChunk).
+ *     \li update_counters - operation carried out by worker threads to update the word counters each time a chunk is processed.
  *
  *  Unmonitored Methods:
- *     \li putInitialData - operation carried out by the main thread.
- *     \li printResults - operation carried out by the main thread.
+ *     \li initialize - operation carried out by the main thread to allocate memory and start counters.
+ *     \li process_chunk - operation carried out by the main thread to process the text chunk.
+ *     \li reset_struct - operation carried out by the main thread to reset the variables of the struct ChunkData.
+ *     \li print_results - operation carried out by the main thread to print the final results.
  *
  *  \author Artur Romão e João Reis - March 2023
- */
+ */ 
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
 #include <errno.h>
+#include <string.h>
 
 #include "shared.h"
 #include "countWords.h"
 
-/** \brief status array of workers (0 if idle, 1 if working) */
+/** \brief status array of workers */
 extern int *workers_status;
 
 /** \brief number of files that will be read and process */
@@ -47,7 +48,7 @@ extern int numFiles;
 /** \brief max number of bytes per chunk */
 extern int maxBytesPerChunk;
 
-/** \brief if all work is done */
+/** \brief bool that is true if all work is done, false otherwise */
 extern bool all_work_done;
 
 /** \brief storage region */
@@ -85,7 +86,7 @@ void initialize(char *filenames[]) {
 }
 
 /**
- *  \brief Proce process from the data transfer region.
+ *  \brief Get data to process from the data transfer region.
  *
  *  Operation carried out by the workers.
  *
@@ -147,11 +148,28 @@ void get_chunk(unsigned int id, struct ChunkData *data) {
 }
 
 
+/**
+ *  \brief Process the chunk data.
+ *
+ *  Operation carried out by the main.
+ *
+ *  \param id worker identification
+ *  \param data structure that will store the chunk of chars to process
+ */
 void process_chunk(unsigned int id, struct ChunkData *data) {
   printf(">> (%d) Processing chunk...\n", id);
   count_words(data);
 }
 
+
+/**
+ *  \brief Update counter variables of the struct File.
+ *
+ *  Operation carried out by the workers.
+ *
+ *  \param id worker identification
+ *  \param data structure that will store the chunk of chars to process and the partial counters
+ */
 void update_counters(unsigned int id, struct ChunkData *data) {
   // enter monitor 
   if ((workers_status[id] = pthread_mutex_lock(&accessCR)) != 0) {
@@ -183,6 +201,27 @@ void update_counters(unsigned int id, struct ChunkData *data) {
 }
 
 
+/**
+ *  \brief Reset the variables of the struct ChunkData.
+ *
+ *  Operation carried out by the main thread.
+ *
+ *  \param data structure that will store the chunk of chars to process
+ */
+void reset_struct(struct ChunkData *data) {
+  // reset struct variables
+  data->is_finished = false;
+  data->nWords = 0; data->nWordsA = 0; data->nWordsE = 0; data->nWordsI = 0; data->nWordsO = 0; data->nWordsU = 0; data->nWordsY = 0;
+  memset(data->chunk, 0, maxBytesPerChunk * sizeof(unsigned int));
+
+}
+
+
+/**
+ *  \brief Print results of the text processing.
+ *
+ *  Operation carried out by the main thread.
+ */
 void print_results() {
   // printing the results
   for (int i = 0; i < numFiles; i++) {

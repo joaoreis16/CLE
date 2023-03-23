@@ -1,34 +1,34 @@
 /**
- *  \file sharedRegion.h (interface file)
+ *  \file shared.c (interface file)
  *
- *  \brief Shared Region for the text processing.
+ *  \brief Memory Shared Region for the text processing problem with multithreading.
  *
  *  Synchronization based on monitors.
- *  Both threads and the monitor are implemented using the pthread library which enables the creation of a
- *  monitor of the Lampson / Redell type.
  *
  *  Data transfer region implemented as a monitor.
  *
- *  This shared region will utilize the array of structures initialized by
+ *  This shared region will use the array of structures initialized by
  *  the main thread.
  * 
  *  Workers can access the shared region to obtain data to process from that
  *  array of structures. They can also store the partial results of the
  *  processing done.
  * 
- *  There is also a function to print out the final results, that should be
+ *  There is also a function to print out the final results, which is
  *  used after there is no more data to be processed.
  * 
  *  Monitored Methods:
- *     \li getData - operation carried out by worker threads.
- *     \li savePartialResults - operation carried out by worker threads.
+ *     \li get_chunk - operation carried out by worker threads to get a chunk of text (size = maxBytesPerChunk).
+ *     \li update_counters - operation carried out by worker threads to update the word counters each time a chunk is processed.
  *
  *  Unmonitored Methods:
- *     \li putInitialData - operation carried out by the main thread.
- *     \li printResults - operation carried out by the main thread.
+ *     \li initialize - operation carried out by the main thread to allocate memory and start counters.
+ *     \li process_chunk - operation carried out by the main thread to process the text chunk.
+ *     \li reset_struct - operation carried out by the main thread to reset the variables of the struct ChunkData.
+ *     \li print_results - operation carried out by the main thread to print the final results.
  *
  *  \author Artur Romão e João Reis - March 2023
- */
+ */ 
 
 
 #ifndef MONITOR_H
@@ -63,7 +63,6 @@ struct File {
 struct ChunkData {
   int index;
   bool is_finished;
-  bool all_work_done;
   unsigned int *chunk;
   int nWords;
   int nWordsA;
@@ -85,31 +84,50 @@ struct ChunkData {
 extern void initialize(char *filenames[]);
 
 /**
- *  \brief Store the results of text processing in the data transfer region.
+ *  \brief Update counter variables of the struct File.
  *
  *  Operation carried out by the workers.
  *
- *  \param workerId worker identification
- *  \param data structure with the results to be stored
+ *  \param id worker identification
+ *  \param data structure that will store the chunk of chars to process
  */
-extern void saveChunkResults(unsigned int workerId, struct ChunkData *data);
+extern void update_counters(unsigned int id, struct ChunkData *data);
 
 /**
  *  \brief Get data to process from the data transfer region.
  *
  *  Operation carried out by the workers.
  *
- *  \param workerId worker identification
+ *  \param id worker identification
  *
  *  \param data structure that will store the chunk of chars to process
  */
-extern void get_chunk(unsigned int workerId, struct ChunkData *data);
+extern void get_chunk(unsigned int id, struct ChunkData *data);
+
+/**
+ *  \brief Process the chunk data.
+ *
+ *  Operation carried out by the main.
+ *
+ *  \param id worker identification
+ *  \param data structure that will store the chunk of chars to process
+ */
+extern void process_chunk(unsigned int id, struct ChunkData *data);
+
+/**
+ *  \brief Reset the variables of the struct ChunkData.
+ *
+ *  Operation carried out by the main.
+ *
+ *  \param data structure that will store the chunk of chars to process
+ */
+extern void reset_struct(struct ChunkData *data);
 
 /**
  *  \brief Print results of the text processing.
  *
  *  Operation carried out by the main thread.
  */
-extern void printResults();
+extern void print_results();
 
 #endif /* MONITOR_H */

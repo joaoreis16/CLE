@@ -1,3 +1,13 @@
+/**
+ *  \file countWords.h (implementation file)
+ *
+ *  \brief Problem name: Text Processing with Multithreading.
+ *
+ *  Functions used for text processing.
+ *
+ *  \author Artur Romão e João Reis - March 2023
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -9,8 +19,14 @@
 /** \brief max number of bytes per chunk */
 extern int maxBytesPerChunk;
 
-char *word_separation[24] = {"00", "20", "09", "0a", "0d", "21", "22", "28", "29", "2e", "2c", "3a", "3b", "3f", "5b", "5d", "2d", "e2809c", "e2809d", "e28093", "e280a6", "c2ab", "c2bb", "e28094"};
 
+/**
+ *  \brief Get the size of a char.
+ *
+ *  \param byte UTF8 encoded character
+ *
+ *  \return size of the read char.
+ */
 int get_char_size(int byte) {
     if (byte < 192) {
         return 1;   // 0x0XXXXXXX
@@ -26,37 +42,105 @@ int get_char_size(int byte) {
     }
 }
 
-bool contains(char *val, char *arr[], size_t n) {
-    for (size_t i = 0; i < n; i++) {
-        if (strcmp(arr[i], val) == 0) return true;
+
+/**
+ *  \brief Check if the char is a separation character.
+ *
+ *  \param val char read
+ *
+ *  \return true if the char is a separation char, false if not.
+ */
+bool is_separation(char *val) {
+    char *word_separation[24] = {"00", "20", "09", "0a", "0d", "21", "22", "28", "29", "2e", "2c", "3a", "3b", "3f", "5b", "5d", "2d", "e2809c", "e2809d", "e28093", "e280a6", "c2ab", "c2bb", "e28094"};
+    for (size_t i = 0; i < 24; i++) {
+        if (strcmp(word_separation[i], val) == 0) return true;
     } 
     return false;
 }
 
+
+/**
+ *  \brief Checks if the given character is the vowel A.
+ *
+ *  \param c char read
+ *
+ *  \return true if the char is an 'A', false if not.
+ */
 bool isVowelA(char* c) {
     return (strcmp(c, "41") == 0 || strcmp(c, "61") == 0 || strcmp(c, "c3a0") == 0 || strcmp(c, "c3a1") == 0 || strcmp(c, "c3a2") == 0 || strcmp(c, "c3a3") == 0 || strcmp(c, "c380") == 0 || strcmp(c, "c381") == 0 || strcmp(c, "c382") == 0 || strcmp(c, "c383") == 0);
 }
 
+
+/**
+ *  \brief Checks if the given character is the vowel E.
+ *
+ *  \param c char read
+ *
+ *  \return true if the char is an 'E', false if not.
+ */
 bool isVowelE(char* c) {
     return (strcmp(c, "45") == 0 || strcmp(c, "65") == 0 || strcmp(c, "c3a8") == 0 || strcmp(c, "c3a9") == 0 || strcmp(c, "c3aa") == 0 || strcmp(c, "c388") == 0 || strcmp(c, "c389") == 0 || strcmp(c, "c38a") == 0);
 }
 
+
+/**
+ *  \brief Checks if the given character is the vowel I.
+ *
+ *  \param c char read
+ *
+ *  \return true if the char is an 'I', false if not.
+ */
 bool isVowelI(char* c) {
     return (strcmp(c, "49") == 0 || strcmp(c, "69") == 0 || strcmp(c, "c3ac") == 0 || strcmp(c, "c3ad") == 0 || strcmp(c, "c38c") == 0 || strcmp(c, "c38d") == 0);
 }
 
+
+/**
+ *  \brief Checks if the given character is the vowel O.
+ *
+ *  \param c char read
+ *
+ *  \return true if the char is an 'O', false if not.
+ */
 bool isVowelO(char* c) {
     return (strcmp(c, "4f") == 0 || strcmp(c, "6f") == 0 || strcmp(c, "c3b2") == 0 || strcmp(c, "c3b3") == 0 || strcmp(c, "c3b4") == 0 || strcmp(c, "c3b5") == 0 || strcmp(c, "c392") == 0 || strcmp(c, "c393") == 0 || strcmp(c, "c394") == 0 || strcmp(c, "c395") == 0);
 }
 
+
+/**
+ *  \brief Checks if the given character is the vowel U.
+ *
+ *  \param c char read
+ *
+ *  \return true if the char is an 'U', false if not.
+ */
 bool isVowelU(char* c) {
     return (strcmp(c, "55") == 0 || strcmp(c, "75") == 0 || strcmp(c, "c3b9") == 0 || strcmp(c, "c3ba") == 0 || strcmp(c, "c399") == 0 || strcmp(c, "c39a") == 0);
 }
 
+
+/**
+ *  \brief Checks if the given character is the vowel Y.
+ *
+ *  \param c char read
+ *
+ *  \return true if the char is an 'Y', false if not.
+ */
 bool isVowelY(char* c) {
     return (strcmp(c, "59") == 0 || strcmp(c, "79") == 0);
 }
 
+
+/**
+ *  \brief Performs text processing of a chunk.
+ *
+ *  Counts the number of words, and the words containing a vowel.
+
+ *  Operation executed by workers.
+ *
+ *  \param data structure that contains the data needed to process
+ *  and will be filled with the results obtained
+ */
 void count_words(struct ChunkData *data) {
 
     bool inWord = false;
@@ -83,9 +167,7 @@ void count_words(struct ChunkData *data) {
             strcpy(actual_char, last_char);
         }
 
-        printf("%s\n", actual_char);
-
-        if (contains(actual_char, word_separation, 24)) {
+        if (is_separation(actual_char)) {
             inWord = false;
             memset(first_occur, false, sizeof(first_occur));
 
@@ -148,7 +230,6 @@ void get_valid_chunk(struct ChunkData *data, struct File *file) {
 
     while (bytes_read < maxBytesPerChunk) {
         int byte = fgetc(file->file);
-        sprintf(actual_char, "%02x", byte);   //  convert hexadecimal to string
 
         if (byte == EOF) {
             word_offset = 0;
@@ -161,6 +242,8 @@ void get_valid_chunk(struct ChunkData *data, struct File *file) {
             total_bytes = get_char_size(byte);
             strcpy(last_char, "");
         }
+
+        sprintf(actual_char, "%02x", byte);   //  convert hexadecimal to string
 
         // if char is multi-byte
         if (total_bytes != 0) {
@@ -176,7 +259,7 @@ void get_valid_chunk(struct ChunkData *data, struct File *file) {
             strcpy(actual_char, last_char);
         } 
         
-        if (contains(actual_char, word_separation, 24)) {
+        if (is_separation(actual_char)) {
             word_offset = 0;
         }
 
@@ -186,10 +269,10 @@ void get_valid_chunk(struct ChunkData *data, struct File *file) {
     for (int i = 1; i <= word_offset; i++) {
         data->chunk[maxBytesPerChunk - i] = '\0';
     }
-    if (word_offset != 0) fseek(file->file, - word_offset, SEEK_CUR);
+    fseek(file->file, - word_offset, SEEK_CUR);
 
-    printf(">> printing valid chunk\n");
-    for (int loop = 0; loop < maxBytesPerChunk; loop++) printf("%c", (char)data->chunk[loop]);
-    printf("|\n");
+    /* printf(">> printing valid chunk\n");
+    for (int loop = 0; loop < maxBytesPerChunk; loop++) printf("%c", data->chunk[loop]);
+    printf("|\n"); */
 
 }

@@ -10,9 +10,6 @@
  *  the chunk of the file from the shared region, perform the calculations and then save
  *  the processing results.
  *
- *  Both threads and the monitor are implemented using the pthread library which enables the creation of a
- *  monitor of the Lampson / Redell type.
- *
  *  \author Artur Romão e João Reis - March 2023
  */
 
@@ -161,7 +158,7 @@ int main(int argc, char *argv[]) {
   print_results();
 
   float exec_time = get_delta_time();
-  printf ("\nExecution time = %.6fs\n", exec_time);
+  printf("\nExecution time = %.6fs\n", exec_time);
 
   return EXIT_SUCCESS;
 }
@@ -194,9 +191,11 @@ static void *worker (void *worker_id) {
     // update counters
     update_counters(id, chunk_data);
 
+    // reset struct variables
+    reset_struct(chunk_data);
+
     printf(">> (%d) Done! next...\n", id);
     if (all_work_done) break;
-  
   }
   
   workers_status[id] = EXIT_SUCCESS;
