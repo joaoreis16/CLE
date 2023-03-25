@@ -9,12 +9,8 @@
  *  It is optimized by splitting the work between worker threads which after obtaining
  *  the chunk of the file from the shared region, perform the calculations and then save
  *  the processing results.
- *
- *  \author Artur Romão e João Reis - March 2023
- */
-
-/** 
- * \brief Role of the main thread 
+ * 
+ *  \brief Role of the main thread 
  * 
  *   1. to get the text file names by processing the command line and storing them in 
  *   the shared region
@@ -22,6 +18,8 @@
  *   2. to create the worker threads and wait for their termination
  *
  *   3. to print the results of the processing.
+ *
+ *  \author Artur Romão e João Reis - March 2023
  */
 
 #include <stdio.h>
@@ -87,7 +85,7 @@ int main(int argc, char *argv[]) {
         filenames[numFiles++] = optarg;
         break;
 
-      case 'w': // n. of workers
+      case 'n': // n. of workers
         if (atoi(optarg) < 1) {
           fprintf(stderr, "%s: number of worker threads must be greater or equal than 1\n", argv[0]);
           printUsage(argv[0]);
@@ -232,7 +230,7 @@ static void printUsage(char *cmdName) {
   fprintf (stderr, "\nSynopsis: %s [OPTIONS]\n"
            "  OPTIONS:\n"
            "  -f filename    --- set the file name (max usage: 5)\n"
-           "  -w nWorkers    --- set the number of workers (default: 4)\n"
+           "  -n nWorkers    --- set the number of workers (default: 4)\n"
            "  -m BytesChunk  --- set the number of bytes per chunk (default: 4)\n"
            "  -h             --- print this help\n", cmdName);
 }

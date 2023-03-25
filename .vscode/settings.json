@@ -2,6 +2,8 @@
     "C_Cpp.errorSquiggles": "disabled",
     "files.associations": {
         "stdlib.h": "c",
-        "unistd.h": "c"
+        "unistd.h": "c",
+        "string.h": "c",
+        "stdbool.h": "c"
     }
 }

@@ -32,33 +32,36 @@ void validate(int *val, int N) {
     }
 }
 
-void quicksort(int *arr, int left, int right) {
-    if (left < right) {
-        int pivot = arr[(left + right) / 2];
-        int i = left - 1;
-        int j = right + 1;
-
-        while (1) {
-            do {
-                i++;
-            } while (arr[i] < pivot);
-
-            do {
-                j--;
-            } while (arr[j] > pivot);
-
-            if (i >= j) {
-                break;
-            }
-
-            int temp = arr[i];
-            arr[i] = arr[j];
-            arr[j] = temp;
-        }
-
-        quicksort(arr, left, j);
-        quicksort(arr, j+1, right);
+void compareAndSwap(int *val, int i, int j, int dir) {
+    if ((val[i] > val[j]) == dir) {
+        int temp = val[i];
+        val[i] = val[j];
+        val[j] = temp;
     }
+}
+
+void bitonicMerge(int *val, int low, int cnt, int dir) {
+    if (cnt > 1) {
+        int k = cnt / 2;
+        for (int i = low; i < low + k; i++) {
+            compareAndSwap(val, i, i + k, dir);
+        }
+        bitonicMerge(val, low, k, dir);
+        bitonicMerge(val, low + k, k, dir);
+    }
+}
+
+void bitonicSortRecursive(int *val, int low, int cnt, int dir) {
+    if (cnt > 1) {
+        int k = cnt / 2;
+        bitonicSortRecursive(val, low, k, !dir);
+        bitonicSortRecursive(val, low + k, k, dir);
+        bitonicMerge(val, low, cnt, dir);
+    }
+}
+
+void bitonicSort(int *val, int N) {
+    bitonicSortRecursive(val, 0, N, 1);
 }
 
 int main(int argc, char *argv[]) {
