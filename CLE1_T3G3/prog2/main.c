@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include <math.h>
+#include <string.h>
 
 #include "shared.h"
 
@@ -22,6 +23,9 @@ int **work_assignment;
 
 /** \brief number of worker threads */
 int n_workers;
+
+/** \brief bool that is true if all work is done, false otherwise */
+bool all_work_done;
 
 /** \brief distributor life cycle routine */
 static void *distribute (void *id);
@@ -135,6 +139,8 @@ int main(int argc, char *argv[]) {
     }
   } 
 
+  validate();
+
   float exec_time = get_delta_time();
   printf("Execution time = %.6fs\n", exec_time);
 
@@ -155,14 +161,9 @@ int main(int argc, char *argv[]) {
 **/
 static void *worker (void *worker_id) {
   unsigned int id = *((unsigned int *)worker_id); // worker id
-  printf(">> Starting worker %d thread\n", id);
   bool requested = false;   // flag para não estar sempre a fazer pedidos de request (apenas faz um pedido e espera)
 
   while(true) {
-
-    // usleep((unsigned int) floor (10000.0 * random () / RAND_MAX + 1.5));
-
-    // print(work_assignment, n_workers);
 
     if (!(tasks + id)->is_busy) {
       // send a request to distributor and wait for a work assignment
@@ -172,16 +173,25 @@ static void *worker (void *worker_id) {
       }
 
     } else {
-      // get work and sort integers
-      sort_sequence(id);
+
+      if ( strcmp((tasks + id)->type, "sort") == 0 ) {
+        // get work and sort integers
+        sort_sequence(id);
+
+      } else if ( strcmp((tasks + id)->type, "merge") == 0 ) {
+        // get work and merge subsequences
+        merge_sequences(id);
+      }
 
       // send notification to distributor that the work that has been assigned is completed
       notify(id);
 
       requested = false;
-      break;
+      (tasks + id)->is_busy = false;
+
     }
 
+    if (all_work_done) break;
   }   
 
   workers_status[id] = EXIT_SUCCESS;
@@ -200,7 +210,6 @@ static void *worker (void *worker_id) {
  */
 static void *distribute (void *distributor_id) {
   unsigned int id = *((unsigned int *)distributor_id); // worker id
-  printf(">> Starting distributor thread\n");
 
   read_file();
 
@@ -208,9 +217,6 @@ static void *distribute (void *distributor_id) {
 
   // esperar que um worker peça trabalho
   listen(id, n_workers);
-
-  // quando todo o trabalho acabar, informar os workers
-
 
   distributor_status = EXIT_SUCCESS;
   pthread_exit(&distributor_status);

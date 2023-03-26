@@ -26,7 +26,7 @@ struct SubSequence {
   unsigned int *subsequence;
   unsigned int size;
   bool is_sorted;
-  bool is_being_sorted;
+  bool is_being_processed;
 };
 
 
@@ -38,10 +38,11 @@ struct SubSequence {
 struct File {
   char *filename;
   FILE *file;
+  int size;
   unsigned int *sequence;
   unsigned int *sorted_sequence;
-  int size;
   struct SubSequence **all_subsequences;
+  int all_subsequences_length;
 };
 
 
