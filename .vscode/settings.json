@@ -4,6 +4,15 @@
         "stdlib.h": "c",
         "unistd.h": "c",
         "string.h": "c",
-        "stdbool.h": "c"
+        "stdbool.h": "c",
+        "math.h": "c",
+        "array": "c",
+        "*.tcc": "c",
+        "functional": "c",
+        "fstream": "c",
+        "istream": "c",
+        "ostream": "c",
+        "sstream": "c",
+        "streambuf": "c"
     }
 }
