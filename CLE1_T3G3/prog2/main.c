@@ -139,6 +139,7 @@ int main(int argc, char *argv[]) {
     }
   } 
 
+
   validate();
 
   float exec_time = get_delta_time();
@@ -161,6 +162,7 @@ int main(int argc, char *argv[]) {
 **/
 static void *worker (void *worker_id) {
   unsigned int id = *((unsigned int *)worker_id); // worker id
+  printf(">> Starting worker %d thread\n", id);
   bool requested = false;   // flag para não estar sempre a fazer pedidos de request (apenas faz um pedido e espera)
 
   while(true) {
@@ -210,6 +212,7 @@ static void *worker (void *worker_id) {
  */
 static void *distribute (void *distributor_id) {
   unsigned int id = *((unsigned int *)distributor_id); // worker id
+  printf(">> Starting distributor thread\n");
 
   read_file();
 

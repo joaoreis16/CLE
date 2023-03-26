@@ -162,6 +162,7 @@ void listen(int id, int n_workers) {
             }
         }     
 
+        // distribute work
         int worker_id = waiting_work_queue[0];      // get the fist worker waiting for work
 
         // antes de distribuir o trabalho de ordenação, vê se dá para atribuir trabalho de merge
@@ -176,6 +177,8 @@ void listen(int id, int n_workers) {
 
 
         if (sorted_subsequences == 2) {
+            // fazer merge
+            printf("[distributor] distributes merge task to worker %d\n", worker_id);
             (tasks + worker_id)->type = "merge";
             (tasks + worker_id)->index_sequence1 = subsequences_to_merge[0];   // addresses the subsequence id in all_subsequences
             (tasks + worker_id)->index_sequence2 = subsequences_to_merge[1];   // addresses the subsequence id in all_subsequences
@@ -186,6 +189,8 @@ void listen(int id, int n_workers) {
             for (int i = 0; i < n_workers; i++) {           
                 if (!file->all_subsequences[i]->is_being_processed) {
                     // atribuir ao worker a sequencia file->all_subsequences[i]->subsequence
+                    printf("[distributor] distributes sort task of the subsequence %d to worker %d\n", worker_id, worker_id);
+
                     file->all_subsequences[i]->is_being_processed = true;
 
                     (tasks + worker_id)->type = "sort";
@@ -207,6 +212,8 @@ void listen(int id, int n_workers) {
             pthread_exit (&distributor_status);
         }
 
+        printf("[distributor] notification that the work is done received\n");
+
         // remove first element of waiting_work_queue and decrease the pointer to last element, index_waiting_queue
         int i;
         for (i = 0; i < index_waiting_queue; i++) {
@@ -217,6 +224,7 @@ void listen(int id, int n_workers) {
         if (index_waiting_queue == 0) empty_queue = true;
         
         (tasks + worker_id)->is_busy = false;
+
 
         if (file->all_subsequences_length == 1) {
             all_work_done = true;
@@ -244,8 +252,10 @@ void request_work(int worker_id) {
         pthread_exit(NULL);
     }
 
+    printf("[worker %d] requesting work\n", worker_id);
     work_requested = true;
     empty_queue = false;
+
     waiting_work_queue[index_waiting_queue] = worker_id;
     index_waiting_queue++;
     
@@ -266,12 +276,16 @@ void request_work(int worker_id) {
 }
 
 void sort_sequence(int id) {
+    // sort sequence
+
     int subseq_index = (tasks + id)->index_sequence1;
     struct SubSequence *sub_seq = file->all_subsequences[subseq_index];
 
     bitonicSort(sub_seq->subsequence, sub_seq->size);
     sub_seq->is_sorted = true;
     file->all_subsequences[subseq_index] = sub_seq;
+
+    printf("[worker %d] sorted the sequence!\n", id);
 }
 
 
@@ -284,6 +298,8 @@ void notify(int id) {
         perror("[error] on entering monitor(CF)");
         pthread_exit(NULL);
     }
+
+    printf("[worker %d] notifying that work is done\n", id);
 
     if ((workers_status[id] = pthread_cond_signal(&work_done_cond)) != 0) { 
         errno = workers_status[id];           // save error in errno
@@ -352,8 +368,6 @@ void bitonicSort(int *val, int N) {
  */
 void merge_sequences(int worker_id) {
 
-    // int merged_subsequence[], int left[], int left_size, int right[], int right_size
-
     int index_subsequence1 = (tasks + worker_id)->index_sequence1;
     int index_subsequence2 = (tasks + worker_id)->index_sequence2;
 
@@ -382,6 +396,8 @@ void merge_sequences(int worker_id) {
     while (j < right_size) {
         merged_subsequence[k++] = right[j++];
     }
+
+    printf("[worker %d] merge done\n", worker_id);
 
     int new_size = file->all_subsequences_length - 1;
     struct SubSequence **new_all_subseqs = (struct SubSequence**)malloc(new_size * sizeof(struct SubSequence *));
@@ -427,6 +443,8 @@ void merge_sequences(int worker_id) {
  */
 void validate() {
 
+    printf ("\n");
+
     int *val = file->all_subsequences[0]->subsequence;
     int N    = file->all_subsequences[0]->size;
 
@@ -443,4 +461,6 @@ void validate() {
             break;
         }
     }
+
+    printf ("\n");
 }
