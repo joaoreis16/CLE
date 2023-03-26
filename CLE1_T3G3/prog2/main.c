@@ -1,3 +1,29 @@
+/**
+ *  \file main.c
+ *
+ *  \brief Problem name: Integer Sorting with Multithreading.
+ *
+ *  The main objective of this program is to process binary files that contain
+ *  an unordered sequence of integers and sort them.
+ *
+ *  A distributor is used to split the work between worker threads which after obtaining
+ *  a subsequence of integers from the shared region, sort them and update a structure
+ *  with the resulting subsequence. Whenever there at least two sorted subsequences, the
+ *  distributor signals a worker thread to merge them into a single sorted subsequence.
+ *  Until we have a single sorted subsequence, the distributor keeps splitting the work
+ *  between the worker threads.
+ * 
+ *  \brief Role of the main thread 
+ * 
+ *   1. to get the text file names by processing the command line and storing them in 
+ *   the shared region
+ *
+ *   2. to create the distributor and worker threads and wait for their termination
+ *
+ *   3. to print the validation of the resultant sorted sequence.
+ *
+ *  \author Artur Romão e João Reis - March 2023
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,7 +35,7 @@
 
 #include "shared.h"
 
-/** \brief consumer threads return status array */
+/** \brief distributor thread return status */
 int distributor_status;
 
 /** \brief worker threads return status array */
@@ -17,9 +43,6 @@ int *workers_status;
 
 /** \brief queue containing the workers' ids by order of arrival (time they made a request) */
 int *waiting_work_queue;
-
-/** \brief  */
-int **work_assignment;
 
 /** \brief number of worker threads */
 int n_workers;
@@ -90,7 +113,6 @@ int main(int argc, char *argv[]) {
 
   workers_status     = malloc(sizeof(int) * n_workers);
   waiting_work_queue = malloc(sizeof(int) * n_workers);
-  work_assignment    = malloc(sizeof(int) * n_workers);
   for (int i = 0; i < n_workers; i++) waiting_work_queue[i] = -1;
 
   
@@ -163,7 +185,7 @@ int main(int argc, char *argv[]) {
 static void *worker (void *worker_id) {
   unsigned int id = *((unsigned int *)worker_id); // worker id
   printf(">> Starting worker %d thread\n", id);
-  bool requested = false;   // flag para não estar sempre a fazer pedidos de request (apenas faz um pedido e espera)
+  bool requested = false;   // flag to prevent the worker from making tons of requests (makes only one request at a time and waits)
 
   while(true) {
 
@@ -218,8 +240,8 @@ static void *distribute (void *distributor_id) {
 
   divide_work(n_workers);
 
-  // esperar que um worker peça trabalho
-  listen(id, n_workers);
+  // wait for a worker to ask request for work
+  listen(n_workers);
 
   distributor_status = EXIT_SUCCESS;
   pthread_exit(&distributor_status);

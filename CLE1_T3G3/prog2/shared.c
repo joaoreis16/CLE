@@ -1,3 +1,31 @@
+/**
+ *  \file shared.c (implementation file)
+ *
+ *  Synchronization based on monitors.
+ *
+ *  Data transfer region implemented as a monitor.
+ *
+ *  This shared region will use the array of structures initialized by
+ *  the main thread.
+ * 
+ *  Workers can access the shared region to obtain subsequences to process from that
+ *  array of structures.
+ * 
+ *  There is also a function (validate) to check whether the resultant sequence is correctly sorted, 
+ *  which is used when there is no more work to be carried out.
+ * 
+ *  \brief Role of the main thread 
+ * 
+ *   1. to get the text file names by processing the command line and storing them in 
+ *   the shared region
+ *
+ *   2. to create the distributor and worker threads and wait for their termination
+ *
+ *   3. to print the validation of the resultant sorted sequence.
+ *
+ *  \author Artur Romão e João Reis - March 2023
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -13,11 +41,8 @@ extern int distributor_status;
 /** \brief worker threads return status array */
 extern int *workers_status;
 
-/** \brief  */
+/** \brief queue containing the workers that requested for work by order of arrival */
 extern int *waiting_work_queue;
-
-/** \brief  */
-extern int *work_assignment;
 
 /** \brief storage region */
 struct File *file;
@@ -34,10 +59,10 @@ bool work_requested;
 /** \brief last index of waiting queue */
 int index_waiting_queue;
 
-/** \brief  */
+/** \brief check if queue is empty */
 bool empty_queue = true;
 
-/** \brief storage region */
+/** \brief array of tasks assigned to the workers */
 struct Task *tasks;
 
 /** \brief bool that is true if all work is done, false otherwise */
@@ -77,7 +102,12 @@ void initialize(char *file_name, int n_workers) {
   }
 }
 
-
+/**
+ *  \brief Read the file.
+ *
+ *  Reads a binary file and stores its content in an array of integers.
+ *
+ */
 void read_file() {
     // Open binary file for reading
     file->file = fopen(file->filename, "rb");
@@ -107,7 +137,13 @@ void read_file() {
     fclose(file->file);
 }
 
-
+/**
+ *  \brief Divide the work between the workers.
+ *
+ *  Operation carried out by the distributor.
+ * 
+ *  \param n_workers contains the number of workers
+ */
 void divide_work(int n) {
 
     file->all_subsequences = (struct SubSequence**)malloc(n * sizeof(struct SubSequence));
@@ -138,8 +174,14 @@ void divide_work(int n) {
 }
 
 
-
-void listen(int id, int n_workers) {
+/**
+ *  \brief Listening for workers' activity and handling their requests.
+ *
+ *  Operation carried out by the distributor.
+ * 
+ *  \param n_workers contains the number of workers
+ */
+void listen(int n_workers) {
     // enter monitor 
     if ((distributor_status = pthread_mutex_lock(&accessCR)) != 0) {
         errno = distributor_status;           // save error in errno
@@ -151,7 +193,7 @@ void listen(int id, int n_workers) {
     while (true) {
         // wait for a work request
         while (!work_requested) {
-            // caso haja workers na fila de espera
+            // in case there are workers in the waiting queue
             if (!empty_queue) break;
             
             if ((distributor_status = pthread_cond_wait(&work_request_cond, &accessCR)) != 0) { 
@@ -165,7 +207,7 @@ void listen(int id, int n_workers) {
         // distribute work
         int worker_id = waiting_work_queue[0];      // get the fist worker waiting for work
 
-        // antes de distribuir o trabalho de ordenação, vê se dá para atribuir trabalho de merge
+        // before distributing the sorting work, check if there is a way to assign merge work
         int sorted_subsequences = 0;
         int *subsequences_to_merge = (int*)malloc(2 * sizeof(int));
         for (int i = 0; i < file->all_subsequences_length; i++) {
@@ -177,7 +219,7 @@ void listen(int id, int n_workers) {
 
 
         if (sorted_subsequences == 2) {
-            // fazer merge
+            // merge
             printf("[distributor] distributes merge task to worker %d\n", worker_id);
             (tasks + worker_id)->type = "merge";
             (tasks + worker_id)->index_sequence1 = subsequences_to_merge[0];   // addresses the subsequence id in all_subsequences
@@ -188,7 +230,7 @@ void listen(int id, int n_workers) {
             // sort task
             for (int i = 0; i < n_workers; i++) {           
                 if (!file->all_subsequences[i]->is_being_processed) {
-                    // atribuir ao worker a sequencia file->all_subsequences[i]->subsequence
+                    // assign to worker the subsequence file->all_subsequences[i]->subsequence
                     printf("[distributor] distributes sort task of the subsequence %d to worker %d\n", worker_id, worker_id);
 
                     file->all_subsequences[i]->is_being_processed = true;
@@ -241,7 +283,11 @@ void listen(int id, int n_workers) {
     }
 }
 
-
+/**
+ *  \brief Request for work.
+ *
+ *  Operation carried out by the workers.
+ */
 void request_work(int worker_id) {
     // signal the distributor thread that work has been requested
     // enter monitor 
@@ -275,6 +321,13 @@ void request_work(int worker_id) {
     }
 }
 
+/**
+ *  \brief Sort a sequence.
+ *
+ *  Operation carried out by the workers.
+ *
+ *  \param id contains the id of the sequence to be sorted
+ */
 void sort_sequence(int id) {
     // sort sequence
 
@@ -288,7 +341,13 @@ void sort_sequence(int id) {
     printf("[worker %d] sorted the sequence!\n", id);
 }
 
-
+/**
+ *  \brief Notify the distributor that work has been completed.
+ *
+ *  Operation carried out by the workers.
+ *
+ *  \param id contains the worker id that has completed its task
+ */
 void notify(int id) {
     // Signal the distributor thread that work has been finished
     // Enter monitor
@@ -347,24 +406,24 @@ void bitonicSortRecursive(int *val, int low, int cnt, int dir) {
     }
 }
 
+/**
+ *  \brief Applies the Bitonic Sort algorithm to a subsequence of integers.
+ *
+ *  Operation carried out by the workers.
+ *
+ *  \param val contains the subsequence of integers to be sorted
+ *  \param N contains the size of the subsequence
+ */
 void bitonicSort(int *val, int N) {
     bitonicSortRecursive(val, 0, N, 1);
 }
 
 /**
- *  \brief Merge two subsequences into a sorted sequence
+ *  \brief Merge two sequences.
  *
- *  The merged_subsequence array must be allocated with size = left_size + right_size.
- *  The left and right arrays must be sorted.
- *  After the execution of this method, merged_subsequence will contain the sorted sequence of the left and right arrays.
+ *  Operation carried out by the workers. 
  *
- *  \param merged_subsequence Empty array with size = left_size + right_size
- *  \param left Array containing a sorted subsequence of integers with size = left_size
- *  \param left_size Size of the left array
- *  \param right Array containing a sorted subsequence of integers with size = right_size
- *  \param right_size Size of the right array
- *
- *  \return void, although, modifies the array arr
+ *  \param worker_id contains the worker id that was assigned to merge the subsequences
  */
 void merge_sequences(int worker_id) {
 
@@ -438,8 +497,6 @@ void merge_sequences(int worker_id) {
  *
  *  Check in the end if the sequence of values is properly sorted
  *
- *  \param val 
- *  \param N 
  */
 void validate() {
 
