@@ -14,8 +14,9 @@
  */
 struct SubSequence {
   unsigned int *subsequence;
-  unsigned int *sorted_subsequence;
+  unsigned int size;
   bool is_sorted;
+  bool is_being_sorted;
 };
 
 

@@ -15,6 +15,12 @@ int distributor_status;
 /** \brief worker threads return status array */
 int *workers_status;
 
+/** \brief queue containing the workers' ids by order of arrival (time they made a request) */
+int *waiting_work_queue;
+
+/** \brief  */
+int *work_assignment;
+
 /** \brief number of worker threads */
 int n_workers;
 
@@ -76,7 +82,15 @@ int main(int argc, char *argv[]) {
   // storing file names in the shared region
   initialize(filename);
 
-  workers_status = malloc(sizeof(int) * n_workers);
+  workers_status     = malloc(sizeof(int) * n_workers);
+  waiting_work_queue = malloc(sizeof(int) * n_workers);
+  work_assignment    = malloc(sizeof(int) * n_workers);
+  for (int i = 0; i < n_workers; i++) waiting_work_queue[i] = -1;
+  for (int i = 0; i < n_workers; i++) work_assignment[i] = -1;
+  
+  printf("init work_assignment queue: ");
+  print(work_assignment, n_workers);
+  
   pthread_t *pthread_workers;             // workers' threads array
   pthread_t *pthread_distributor;         // distributor threads array
   unsigned int *workers;                  // workers application defined thread id array 
@@ -143,23 +157,35 @@ int main(int argc, char *argv[]) {
 static void *worker (void *worker_id) {
   unsigned int id = *((unsigned int *)worker_id); // worker id
   printf(">> Starting worker %d thread\n", id);
+  bool requested = false;
 
   while(true) {
 
-    usleep((unsigned int) floor (10000.0 * random () / RAND_MAX + 1.5));
+    // usleep((unsigned int) floor (10000.0 * random () / RAND_MAX + 1.5));
 
-    // send a request to distributor and wait for a work assignment
-    request_work(id);
+    // print(work_assignment, n_workers);
 
-  }
+    if (work_assignment[id] == -1) {
+      // send a request to distributor and wait for a work assignment
+      if (!requested) {
+        request_work(id);
+        requested = true;
+      }
 
-  // get work and sort integers
+    } else {
+      // get work and sort integers
+      sort_sequence(id);
 
-  // send notification to distributor that the work that has been assigned is completed
-  
+      // send notification to distributor that the work that has been assigned is completed
+      notify(id);
+
+      requested = false;
+      break;
+    }
+
+  }   
+
   workers_status[id] = EXIT_SUCCESS;
-
-  // free(chunk_data); // deallocate the structure memory
   pthread_exit(&workers_status[id]);
 } 
 
@@ -182,10 +208,13 @@ static void *distribute (void *distributor_id) {
   divide_work(n_workers);
 
   // esperar que um worker peça trabalho
-  listen(id);
+  listen(id, n_workers);
 
   // quando todo o trabalho acabar, informar os workers
 
+
+  distributor_status = EXIT_SUCCESS;
+  pthread_exit(&distributor_status);
 } 
 
 

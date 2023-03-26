@@ -13,14 +13,29 @@ extern int distributor_status;
 /** \brief worker threads return status array */
 extern int *workers_status;
 
+/** \brief  */
+extern int *waiting_work_queue;
+
+/** \brief  */
+extern int *work_assignment;
+
 /** \brief storage region */
 struct File *file;
 
 /** \brief distributor synchronization point when a worker request work to do */
-pthread_cond_t cond;
+pthread_cond_t work_request_cond;
+
+/** \brief distributor synchronization point when a worker finishes its assigned work */
+pthread_cond_t work_done_cond;
 
 /** \brief flag to indicate if there is work to be done */
 bool work_requested = false;
+
+/** \brief last index of waiting queue */
+int index_waiting_queue = 0;
+
+/** \brief  */
+bool empty_queue = true;
 
 /** \brief locking flag which warrants mutual exclusion inside the monitor */
 static pthread_mutex_t accessCR = PTHREAD_MUTEX_INITIALIZER;
@@ -39,6 +54,9 @@ void initialize(char *file_name) {
 
   file->filename = file_name;
   file->file = NULL;
+
+  pthread_cond_init (&work_request_cond, NULL);    // initialize work_request synchronization point 
+  pthread_cond_init (&work_done_cond, NULL);       // initialize work_done synchronization point
 }
 
 
@@ -57,8 +75,6 @@ void read_file() {
         printf("Error reading the file\n");
         exit(EXIT_FAILURE);
     }
-
-    // printf("number of integers = %d\n", file->size);
 
     file->sequence = (int*)malloc(file->size * sizeof(int));
 
@@ -100,6 +116,9 @@ void divide_work(int n) {
         int end = start + part_size + (i < remainder ? 1 : 0);
 
         subseq->subsequence = (int*)malloc((end - start) * sizeof(int));
+        subseq->size = (end - start);
+        subseq->is_being_sorted = false;
+        subseq->is_sorted = false;
 
         int k = 0;
         for (int j = start; j < end; j++) {
@@ -112,15 +131,15 @@ void divide_work(int n) {
     }
 
     // for debug
-    for (int i = 0; i < n; i++) {
+    /* for (int i = 0; i < n; i++) {
         printf("Sub-sequence %d: ", i + 1);
         print(file->all_subsequences[i]->subsequence, 8);
-    }
+    } */
 }
 
 
 
-void listen(int id) {
+void listen(int id, int n_workers) {
     // enter monitor 
     if ((distributor_status = pthread_mutex_lock(&accessCR)) != 0) {
         errno = distributor_status;           // save error in errno
@@ -132,26 +151,91 @@ void listen(int id) {
     while (true) {
         // wait for a work request
         while (!work_requested) {
-            if ((distributor_status = pthread_cond_wait(&cond, &accessCR)) != 0) { 
-                errno = distributor_status;                                                          /* save error in errno */
+            // caso haja workers na fila de espera
+            if (!empty_queue) break;    // 
+
+            if ((distributor_status = pthread_cond_wait(&work_request_cond, &accessCR)) != 0) { 
+                errno = distributor_status;                          // save error in errno 
                 perror ("[error] on waiting for worker's request");
                 distributor_status = EXIT_FAILURE;
                 pthread_exit (&distributor_status);
             }
-        }
+        }     
 
         // distribute work
-        printf("[distributor] starting distribute work\n");
+        printf("waiting queue: ");
+        print(waiting_work_queue, n_workers);
 
-        int len = sizeof(file->all_subsequences) / sizeof(file->all_subsequences[0]);
-        for (int i = 0; i < len; i++) {
-            printf("Sub-sequence %d: ", i + 1);
-            print(file->all_subsequences[i]->subsequence, 8);
+        int worker_id = waiting_work_queue[0];      // get the fist worker waiting for work
+
+
+        // antes de distribuir o trabalho de ordenação, vê se dá para atribuir trabalho de merge
+        int sorted_subsequences = 0;
+        int *subsequences_to_merge = (int*)malloc(2 * sizeof(int));
+        for (int i = 0; i < n_workers; i++) {
+            if (file->all_subsequences[i]->is_sorted){
+              
+              sorted_subsequences++;  
+            } 
         }
 
+        if (sorted_subsequences >= 2) {
+            // fazer merge
+            
+            
+            
+        } else {
+            for (int i = 0; i < n_workers; i++) {           
+                if (!file->all_subsequences[i]->is_being_sorted) {
+                    // atribuir ao worker a sequencia file->all_subsequences[i]->subsequence
+                    printf("[distributor] distributes subsequence %d to worker %d\n", i, worker_id);
+                    // print(file->all_subsequences[i]->subsequence, 8);
+
+                    file->all_subsequences[i]->is_being_sorted = true;
+                    work_assignment[worker_id] = i;     // addresses the subsequence id in all_subsequences
+                    // print(work_assignment, n_workers);
+                    break;
+                }
+            }
+        }
 
         // reset the work flag
         work_requested = false;
+
+        // Wait for the work_done notification
+        if ((distributor_status = pthread_cond_wait(&work_done_cond, &accessCR)) != 0) { 
+            errno = distributor_status;                          // save error in errno 
+            perror ("[error] on waiting for worker's notification");
+            distributor_status = EXIT_FAILURE;
+            pthread_exit (&distributor_status);
+        }
+
+        printf("[distributor] notification that the work is done received\n");
+
+        // remove first element of waiting_work_queue and decrease the pointer to last element, index_waiting_queue
+        int i;
+        for (i = 0; i < index_waiting_queue; i++) {
+            waiting_work_queue[i] = waiting_work_queue[i + 1];
+        }
+        waiting_work_queue[i] = -1;
+        index_waiting_queue--;
+        if (index_waiting_queue == 0) empty_queue = true;
+
+
+        // Check if all work is done and break the loop if necessary
+        int all_subsequences_sorted = 0;
+        for (int i = 0; i < n_workers; i++) {
+            if (file->all_subsequences[i]->is_sorted) {
+                all_subsequences_sorted++;
+            }
+        }
+        
+        
+        // final if -> 1 remaining subsequence (that is sorted); break;
+        if (all_subsequences_sorted == n_workers) {
+            printf(">> All sub-sequences sorted!\n");
+            // break;
+        }
     }
 
     // exit monitor
@@ -164,9 +248,69 @@ void listen(int id) {
 }
 
 
-void request_work(int id) {
+void request_work(int worker_id) {
     // signal the distributor thread that work has been requested
     // enter monitor 
+    if ((workers_status[worker_id] = pthread_mutex_lock(&accessCR)) != 0) {
+        errno = workers_status[worker_id];           // save error in errno
+        workers_status[worker_id] = EXIT_FAILURE;
+        perror("[error] on entering monitor(CF)");
+        pthread_exit(NULL);
+    }
+
+    printf("[worker %d] requesting work\n", worker_id);
+    work_requested = true;
+    empty_queue = false;
+    // printf("index_waiting_queue: %d  | worker_id: %d\n", index_waiting_queue, worker_id);
+    waiting_work_queue[index_waiting_queue] = worker_id;
+    index_waiting_queue++;
+    
+    if ((workers_status[worker_id] = pthread_cond_signal (&work_request_cond)) != 0){ 
+        errno = workers_status[worker_id];           // save error in errno
+        perror ("[error] on requesting work to the distributor");
+        workers_status[worker_id] = EXIT_FAILURE;
+        pthread_exit (&workers_status[worker_id]);
+    }
+
+    // exit monitor
+    if ((workers_status[worker_id] = pthread_mutex_unlock(&accessCR)) != 0) {
+        errno = workers_status[worker_id];           // save error in errno
+        workers_status[worker_id] = EXIT_FAILURE;
+        perror("[error] on exting monitor(CF)");
+        pthread_exit(NULL);
+    }
+}
+
+void sort_sequence(int id) {
+    // sort sequence
+    int subseq_index = work_assignment[id];
+    struct SubSequence *sub_seq = file->all_subsequences[subseq_index];
+
+    // print de todos as subsequences->is_sorted
+    /* printf("antes de uma sequencia ficar sorted: ");
+    for (int i = 0; i < 4; i++) {
+        printf("%d ", file->all_subsequences[i]->is_sorted);
+    }
+    printf("\n"); */
+
+    bitonicSort(sub_seq->subsequence, sub_seq->size);
+    sub_seq->is_sorted = true;
+    file->all_subsequences[subseq_index] = sub_seq;
+
+    /* printf("depois de uma sequencia ficar sorted: ");
+    for (int i = 0; i < 4; i++) {
+        printf("%d ", file->all_subsequences[i]->is_sorted);
+    }
+    printf("\n"); */
+
+    printf("[worker %d] sorted the sequence!\n", id);
+
+}
+
+
+void notify(int id) {
+    // Signal the distributor thread that work has been finished
+    // Enter monitor
     if ((workers_status[id] = pthread_mutex_lock(&accessCR)) != 0) {
         errno = workers_status[id];           // save error in errno
         workers_status[id] = EXIT_FAILURE;
@@ -174,24 +318,25 @@ void request_work(int id) {
         pthread_exit(NULL);
     }
 
-    work_requested = true;
-    printf("[worker %d] requesting work\n", id);
+    printf("[worker %d] notifying that work is done\n", id);
 
-    if ((workers_status[id] = pthread_cond_signal (&cond)) != 0){ 
+    if ((workers_status[id] = pthread_cond_signal(&work_done_cond)) != 0) { 
         errno = workers_status[id];           // save error in errno
-        perror ("[error] on requesting work to the distributor");
+        perror("[error] on notifying distributor that work is done");
         workers_status[id] = EXIT_FAILURE;
-        pthread_exit (&workers_status[id]);
+        pthread_exit(&workers_status[id]);
     }
 
-    // exit monitor
+    // Exit monitor
     if ((workers_status[id] = pthread_mutex_unlock(&accessCR)) != 0) {
         errno = workers_status[id];           // save error in errno
         workers_status[id] = EXIT_FAILURE;
-        perror("[error] on exting monitor(CF)");
+        perror("[error] on exiting monitor(CF)");
         pthread_exit(NULL);
     }
+    
 }
+
 
 void compareAndPossibleSwap(int *val, int i, int j, int dir) {
     if ((val[i] > val[j]) == dir) {
