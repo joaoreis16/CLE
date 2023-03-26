@@ -7,6 +7,16 @@
 #include <stdio.h>
 
 
+
+struct Task {
+    int worker_id;
+    char *type;
+    int index_sequence1;
+    int index_sequence2;
+    bool is_busy;
+};
+
+
 /**
  *  \brief Structure with the filename and file pointer to process.
  *
@@ -43,7 +53,7 @@ struct File {
  *
  *  \param filename contains the names of the files to be stored
  */
-extern void initialize(char *filename);
+extern void initialize(char *filename, int n_workers);
 
 extern void read_file();
 

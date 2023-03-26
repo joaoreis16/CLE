@@ -29,13 +29,16 @@ pthread_cond_t work_request_cond;
 pthread_cond_t work_done_cond;
 
 /** \brief flag to indicate if there is work to be done */
-bool work_requested = false;
+bool work_requested;
 
 /** \brief last index of waiting queue */
-int index_waiting_queue = 0;
+int index_waiting_queue;
 
 /** \brief  */
 bool empty_queue = true;
+
+/** \brief storage region */
+struct Task *tasks;
 
 /** \brief locking flag which warrants mutual exclusion inside the monitor */
 static pthread_mutex_t accessCR = PTHREAD_MUTEX_INITIALIZER;
@@ -48,7 +51,7 @@ static pthread_mutex_t accessCR = PTHREAD_MUTEX_INITIALIZER;
  *
  *  \param filename all file names passed in command argumment
  */
-void initialize(char *file_name) {  
+void initialize(char *file_name, int n_workers) {  
   // allocating memory file structs
   file = (struct File*)malloc(sizeof(struct File));
 
@@ -57,11 +60,21 @@ void initialize(char *file_name) {
 
   pthread_cond_init (&work_request_cond, NULL);    // initialize work_request synchronization point 
   pthread_cond_init (&work_done_cond, NULL);       // initialize work_done synchronization point
+
+  work_requested = false;
+  index_waiting_queue = 0;
+
+  // initialize storage struct for tasks 
+  tasks = (struct Task *)malloc(n_workers * sizeof(struct Task));
+
+  for (int i = 0; i < n_workers; i++) {
+    (tasks + i)->worker_id = i;
+    (tasks + i)->is_busy   = false;
+  }
 }
 
 
 void read_file() {
-
     // Open binary file for reading
     file->file = fopen(file->filename, "rb");
     
@@ -162,6 +175,7 @@ void listen(int id, int n_workers) {
             }
         }     
 
+
         // distribute work
         printf("waiting queue: ");
         print(waiting_work_queue, n_workers);
@@ -173,18 +187,49 @@ void listen(int id, int n_workers) {
         int sorted_subsequences = 0;
         int *subsequences_to_merge = (int*)malloc(2 * sizeof(int));
         for (int i = 0; i < n_workers; i++) {
-            if (file->all_subsequences[i]->is_sorted){
-              
-              sorted_subsequences++;  
+            if (file->all_subsequences[i]->is_sorted && sorted_subsequences < 2) {
+                subsequences_to_merge[sorted_subsequences] = i;
+                sorted_subsequences++;  
             } 
         }
 
-        if (sorted_subsequences >= 2) {
+
+        if (sorted_subsequences == 2) {
             // fazer merge
+             
+            /* FEITO 
+            
+            1. susbtiruir o work assignment para esta estrutura
+    
+                        struct task {
+                            int worker_id
+                            char * type
+                            int *sequence1
+                            int *sequence2
+                            int size_seq1
+                            int size_seq2
+                        } 
+
+            2. no initialize, o distribuidor cria uma lista de tasks com um pointer para cada worker, por exemplo:
+
+                (task + worker_id)->type - desta maneira o worker sabe que tipo de task tem para fazer
+
+            3. partilhar esta lista com a main para os workers terem acesso com o seu id e saberem assim o que têm que dafazeires 
+            */
+
+
+            /* AMANHÃ 
+            
+            fazer o merge aplicando a estrutura task
+
+             */
+
+
+           
             
             
-            
-        } else {
+        } else { 
+            // sort task
             for (int i = 0; i < n_workers; i++) {           
                 if (!file->all_subsequences[i]->is_being_sorted) {
                     // atribuir ao worker a sequencia file->all_subsequences[i]->subsequence
@@ -192,7 +237,12 @@ void listen(int id, int n_workers) {
                     // print(file->all_subsequences[i]->subsequence, 8);
 
                     file->all_subsequences[i]->is_being_sorted = true;
-                    work_assignment[worker_id] = i;     // addresses the subsequence id in all_subsequences
+
+                    (tasks + worker_id)->type = "sort";
+                    (tasks + worker_id)->index_sequence1 = i;   // addresses the subsequence id in all_subsequences
+                    (tasks + worker_id)->is_busy = true;
+
+                    // work_assignment[worker_id] = i;     // addresses the subsequence id in all_subsequences
                     // print(work_assignment, n_workers);
                     break;
                 }
@@ -283,7 +333,8 @@ void request_work(int worker_id) {
 
 void sort_sequence(int id) {
     // sort sequence
-    int subseq_index = work_assignment[id];
+    // int subseq_index = work_assignment[id];
+    int subseq_index = (tasks + id)->index_sequence1;
     struct SubSequence *sub_seq = file->all_subsequences[subseq_index];
 
     // print de todos as subsequences->is_sorted

@@ -8,7 +8,6 @@
 
 #include "shared.h"
 
-
 /** \brief consumer threads return status array */
 int distributor_status;
 
@@ -19,7 +18,7 @@ int *workers_status;
 int *waiting_work_queue;
 
 /** \brief  */
-int *work_assignment;
+int **work_assignment;
 
 /** \brief number of worker threads */
 int n_workers;
@@ -35,6 +34,9 @@ static double get_delta_time(void);
 
 /** \brief print command usage */
 static void printUsage (char *cmdName);
+
+/** \brief storage region */
+extern struct Task *tasks;
 
 
 int main(int argc, char *argv[]) {
@@ -80,16 +82,13 @@ int main(int argc, char *argv[]) {
   (void) get_delta_time ();
 
   // storing file names in the shared region
-  initialize(filename);
+  initialize(filename, n_workers);
 
   workers_status     = malloc(sizeof(int) * n_workers);
   waiting_work_queue = malloc(sizeof(int) * n_workers);
   work_assignment    = malloc(sizeof(int) * n_workers);
   for (int i = 0; i < n_workers; i++) waiting_work_queue[i] = -1;
-  for (int i = 0; i < n_workers; i++) work_assignment[i] = -1;
-  
-  printf("init work_assignment queue: ");
-  print(work_assignment, n_workers);
+
   
   pthread_t *pthread_workers;             // workers' threads array
   pthread_t *pthread_distributor;         // distributor threads array
@@ -157,7 +156,7 @@ int main(int argc, char *argv[]) {
 static void *worker (void *worker_id) {
   unsigned int id = *((unsigned int *)worker_id); // worker id
   printf(">> Starting worker %d thread\n", id);
-  bool requested = false;
+  bool requested = false;   // flag para não estar sempre a fazer pedidos de request (apenas faz um pedido e espera)
 
   while(true) {
 
@@ -165,7 +164,7 @@ static void *worker (void *worker_id) {
 
     // print(work_assignment, n_workers);
 
-    if (work_assignment[id] == -1) {
+    if (!(tasks + id)->is_busy) {
       // send a request to distributor and wait for a work assignment
       if (!requested) {
         request_work(id);
