@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
   all_work_done = false;        // if all work is done 
 
   do {
-    switch ((opt = getopt(argc, argv, "hf:w:m:"))) {
+    switch ((opt = getopt(argc, argv, "hf:n:m:"))) {
       case 'f': // file name
         if (optarg[0] == '-') {
           fprintf(stderr, "%s: file name is missing\n", argv[0]);

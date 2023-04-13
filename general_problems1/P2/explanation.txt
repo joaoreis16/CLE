@@ -1,0 +1,7 @@
+This implementation works by using a parallel implementation of the quicksort algorithm to sort a sequence of integers. The program reads in the integers from a data file specified in the command line argument and stores them in an array.
+
+The parallel implementation of quicksort used in this program is based on the divide-and-conquer paradigm. The quicksort algorithm recursively partitions the array into two subarrays and then sorts the subarrays independently. In this program, we use OpenMP to parallelize the sorting of the subarrays.
+
+The main function of the program calls the parallel_quicksort function to sort the array in parallel. The parallel_quicksort function selects a pivot element from the array and partitions the array into two subarrays, one containing elements smaller than the pivot and the other containing elements larger than the pivot. It then recursively calls itself on each subarray in parallel, using OpenMP to spawn two parallel sections.
+
+The compare_integers function is used by the qsort function to compare two integers and return their relative order. The qsort function is not used in this program, but it is included as an alternative way to sort the array if the parallel quicksort implementation does not work as expected.
