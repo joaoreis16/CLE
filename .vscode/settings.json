@@ -15,6 +15,7 @@
         "sstream": "c",
         "streambuf": "c",
         "type_traits": "c",
-        "limits": "c"
+        "limits": "c",
+        "shared.h": "c"
     }
 }
