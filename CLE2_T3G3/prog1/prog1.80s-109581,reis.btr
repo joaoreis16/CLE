@@ -1,0 +1,6 @@
+
+prog1:109581 terminated with signal 11 at PC=5589c20d681b SP=7ffcb25c01c0.  Backtrace:
+./prog1(+0x281b)[0x5589c20d681b]
+/lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x7f2e9a829d90]
+/lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x7f2e9a829e40]
+./prog1(+0x13c5)[0x5589c20d53c5]

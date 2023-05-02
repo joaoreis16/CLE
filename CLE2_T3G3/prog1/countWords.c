@@ -14,39 +14,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-/**
- *  \brief Structure with the filename and file pointer to process.
- *
- *   It also stores the final results of the file processing.
- */
-typedef struct {
-  int nWords;
-  int nWordsA;
-  int nWordsE;
-  int nWordsI;
-  int nWordsO;
-  int nWordsU;
-  int nWordsY;
-  bool is_finished;
-} File;
-
-/**
- *  \brief Structure with the chunk data for processing.
- *
- *   It contains the chunk results of the file processing.
- */
-typedef struct {
-  int index;
-  bool is_finished;
-  unsigned int *chunk;
-  int nWords;
-  int nWordsA;
-  int nWordsE;
-  int nWordsI;
-  int nWordsO;
-  int nWordsU;
-  int nWordsY;
-} ChunkData;
+#include "countWords.h"
 
 /** \brief max number of bytes per chunk */
 extern int maxBytesPerChunk;
@@ -82,7 +50,7 @@ int get_char_size(int byte) {
  *
  *  \return true if the char is a separation char, false if not.
  */
-bool is_separation(char *val) {
+bool is_separation(char* val) {
     char *word_separation[24] = {"00", "20", "09", "0a", "0d", "21", "22", "28", "29", "2e", "2c", "3a", "3b", "3f", "5b", "5d", "2d", "e2809c", "e2809d", "e28093", "e280a6", "c2ab", "c2bb", "e28094"};
     for (size_t i = 0; i < 24; i++) {
         if (strcmp(word_separation[i], val) == 0) return true;
@@ -173,18 +141,26 @@ bool isVowelY(char* c) {
  *  \param data structure that contains the data needed to process
  *  and will be filled with the results obtained
  */
-void count_words(ChunkData *data) {
+void count_words(struct ChunkData *data) {
     bool inWord = false;
     data->nWords = 0; data->nWordsA = 0; data->nWordsE = 0; data->nWordsI = 0; data->nWordsO = 0; data->nWordsU = 0; data->nWordsY = 0;
     int total_bytes = 0;
-    char actual_char[50];
-    char last_char[50];
+    char actual_char[20];
+    char last_char[20];
     bool first_occur[6] = {false, false, false, false, false, false};
 
+    printf("ready to count words\n");
+
     for(int k = 0; k < maxBytesPerChunk; k++) {
+        printf("byte = %d\n", 1);
+
         int byte = data->chunk[k];
+
+        printf("cá estamos!\n");
         
         sprintf(actual_char, "%02x", byte);   //  convert hexadecimal to string
+
+        printf("cá estamos!\n");
 
         if (total_bytes == 0) {
             total_bytes = get_char_size(byte);
@@ -263,11 +239,11 @@ void count_words(ChunkData *data) {
  *  and will be filled with the results obtained
  *  \param file structure that stores the final results of the file processing
  */
-void get_valid_chunk(ChunkData *data, FILE *file) {
+void get_valid_chunk(struct ChunkData *data, FILE *file) {
     int bytes_read = 0;
     int word_offset  = 0;
-    unsigned char actual_char[50];
-    char last_char[50];
+    char actual_char[20];
+    char last_char[20];
     int total_bytes = 0;
 
     while (bytes_read < maxBytesPerChunk) {

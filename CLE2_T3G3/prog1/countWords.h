@@ -18,7 +18,7 @@
  *
  *   It also stores the final results of the file processing.
  */
-typedef struct {
+struct File {
   int nWords;
   int nWordsA;
   int nWordsE;
@@ -27,17 +27,17 @@ typedef struct {
   int nWordsU;
   int nWordsY;
   bool is_finished;
-} File;
+};
 
 /**
  *  \brief Structure with the chunk data for processing.
  *
  *   It contains the chunk results of the file processing.
  */
-typedef struct {
+struct ChunkData {
   int index;
   bool is_finished;
-  unsigned int *chunk;
+  int *chunk;
   int nWords;
   int nWordsA;
   int nWordsE;
@@ -45,7 +45,7 @@ typedef struct {
   int nWordsO;
   int nWordsU;
   int nWordsY;
-} ChunkData;
+};
 
 
 /**
@@ -131,7 +131,7 @@ bool isVowelY(char* c);
  *  and will be filled with the results obtained
  *  \param file structure that stores the final results of the file processing
  */
-void get_valid_chunk(ChunkData *data, FILE *file);
+void get_valid_chunk(struct ChunkData *data, FILE *file);
 
 
 /**
@@ -144,6 +144,6 @@ void get_valid_chunk(ChunkData *data, FILE *file);
  *  \param data structure that contains the data needed to process
  *  and will be filled with the results obtained
  */
-void count_words(ChunkData *data);
+void count_words(struct ChunkData *data);
 
 #endif /* TEXT_PROC_Funct_H */
