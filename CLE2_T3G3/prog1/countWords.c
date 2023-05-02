@@ -149,18 +149,10 @@ void count_words(struct ChunkData *data) {
     char last_char[20];
     bool first_occur[6] = {false, false, false, false, false, false};
 
-    printf("ready to count words\n");
-
-    for(int k = 0; k < maxBytesPerChunk; k++) {
-        printf("byte = %d\n", 1);
-
+    for(int k = 0; k < data->chunk_size; k++) {
         int byte = data->chunk[k];
 
-        printf("cá estamos!\n");
-        
         sprintf(actual_char, "%02x", byte);   //  convert hexadecimal to string
-
-        printf("cá estamos!\n");
 
         if (total_bytes == 0) {
             total_bytes = get_char_size(byte);
@@ -245,9 +237,10 @@ void get_valid_chunk(struct ChunkData *data, FILE *file) {
     char actual_char[20];
     char last_char[20];
     int total_bytes = 0;
-
+    int num_of_bytes = 0;
     while (bytes_read < maxBytesPerChunk) {
         int byte = fgetc(file);
+        num_of_bytes++;
 
         if (byte == EOF) {
             word_offset = 0;
@@ -273,8 +266,8 @@ void get_valid_chunk(struct ChunkData *data, FILE *file) {
                 data->chunk[bytes_read++] = byte;   // Fill chunk with content
                 continue;
             }
-            strcpy(actual_char, last_char);
-        } 
+            strcpy(actual_char, last_char);   
+        }
         
         if (is_separation(actual_char)) word_offset = 0;
 
@@ -283,6 +276,9 @@ void get_valid_chunk(struct ChunkData *data, FILE *file) {
 
     for (int i = 1; i <= word_offset; i++) {
         data->chunk[maxBytesPerChunk - i] = '\0';
+        num_of_bytes--;
     }
+
+    data->chunk_size = num_of_bytes - 1;
     fseek(file, - word_offset, SEEK_CUR);
 }

@@ -27,6 +27,7 @@ struct File {
   int nWordsU;
   int nWordsY;
   bool is_finished;
+  char *filename;
 };
 
 /**
@@ -38,6 +39,7 @@ struct ChunkData {
   int index;
   bool is_finished;
   int *chunk;
+  int chunk_size;
   int nWords;
   int nWordsA;
   int nWordsE;

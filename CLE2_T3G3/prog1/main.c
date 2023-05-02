@@ -28,6 +28,8 @@ static void printUsage (char *cmdName);
 
 void get_chunk(struct ChunkData *data, FILE *file);
 
+void print_results(struct File *file_data);
+
 int main(int argc, char *argv[]) {
 
   // process command line arguments and set up variables
@@ -46,7 +48,6 @@ int main(int argc, char *argv[]) {
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
   MPI_Request request = MPI_REQUEST_NULL;
-  MPI_Status status;
 
   /* This program requires at least 2 processes */
   if (size < 2) {
@@ -122,6 +123,7 @@ int main(int argc, char *argv[]) {
 
       /* open file */
       char *file_name = filenames[i];
+      file->filename = file_name;
       FILE *f = fopen(file_name, "rb");
 
       if (f == NULL) {
@@ -130,33 +132,60 @@ int main(int argc, char *argv[]) {
       }
 
       /* while file is processing */
-      // while ( !file->is_finished ) {
+      while ( !file->is_finished ) {
 
-      /* Send a chunk of data to each worker process for processing */
-      for (int worker = 1; worker < size; worker++) {
+        /* Send a chunk of data to each worker process for processing */
+        for (int worker = 1; worker < size; worker++) {
 
-        // structure that has file's chunk to process and the results of that processing 
-        struct ChunkData *chunk_data = (struct ChunkData *)malloc(sizeof(struct ChunkData));
-        chunk_data->chunk = (int *)malloc(maxBytesPerChunk * sizeof(int));
-        chunk_data->nWords = 0; chunk_data->nWordsA = 0; chunk_data->nWordsE = 0;chunk_data->nWordsI = 0; chunk_data->nWordsO = 0;chunk_data->nWordsU = 0; chunk_data->nWordsY = 0;
-        chunk_data->is_finished = false;
+          // structure that has file's chunk to process and the results of that processing 
+          struct ChunkData *chunk_data = (struct ChunkData *)malloc(sizeof(struct ChunkData));
+          chunk_data->chunk = (int *)malloc(maxBytesPerChunk * sizeof(int));
+          chunk_data->nWords = 0; chunk_data->nWordsA = 0; chunk_data->nWordsE = 0;chunk_data->nWordsI = 0; chunk_data->nWordsO = 0;chunk_data->nWordsU = 0; chunk_data->nWordsY = 0;
+          chunk_data->is_finished = false;
 
-        if (file->is_finished) {
-          fclose(f); /* close the file pointer */
-          break;
+          if (file->is_finished) {
+            fclose(f); /* close the file pointer */
+            break;
+          }
+
+          printf("[rank %d] getting chunk data for worker %d\n", rank, worker);
+          get_chunk(chunk_data, f);
+
+          /* printf("chunk = ");
+          for(int i = 0; i < chunk_data->chunk_size; i++) {
+              printf("%02x ", chunk_data->chunk[i]);
+          }
+          printf("\n"); */
+
+          printf("[rank %d] sending chunk data to worker %d\n", rank, worker);
+          MPI_Isend ((char *) chunk_data, sizeof(struct ChunkData), MPI_BYTE, worker, 0, MPI_COMM_WORLD, &request); // MPI_ISend with request
+          printf("[rank %d] sending list of integers to worker %d\n", rank, worker);
+          MPI_Isend (chunk_data->chunk, chunk_data->chunk_size, MPI_INT, worker, 0, MPI_COMM_WORLD, &request);/* the chunk buffer */
         }
 
-        printf("[rank %d] getting chunk data for worker %d\n", rank, worker);
-        get_chunk(chunk_data, f);
+        
 
-        printf("[rank %d] sending chunk data to rank %d\n", rank, worker);
-        MPI_Isend ((char *) chunk_data, sizeof(struct ChunkData), MPI_BYTE, worker, 0, MPI_COMM_WORLD, &request); // MPI_ISend with request
+        for (int worker = 1; worker < size; worker++) { 
+          struct ChunkData *partial_results = (struct ChunkData *)malloc(sizeof(struct ChunkData));
+          MPI_Recv ((char *) partial_results, sizeof (struct ChunkData), MPI_BYTE, worker, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+          file->nWords += partial_results->nWords;
+          file->nWordsA += partial_results->nWordsA;
+          file->nWordsE += partial_results->nWordsE;
+          file->nWordsI += partial_results->nWordsI;
+          file->nWordsO += partial_results->nWordsO;
+          file->nWordsU += partial_results->nWordsU;
+          file->nWordsY += partial_results->nWordsY;
+
+        }
+
       }
 
-      // }
-
-
     }
+
+    printf("[rank %d] printing results\n", rank);
+    print_results(file_data);
+    
   
   } else {
     struct ChunkData *chunk_data = (struct ChunkData *)malloc(sizeof(struct ChunkData));
@@ -165,16 +194,28 @@ int main(int argc, char *argv[]) {
     MPI_Recv ((char *) chunk_data, sizeof (struct ChunkData), MPI_BYTE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     printf("[rank %d] received chunk data from dispatcher!\n", rank);
 
-    printf("chunk = ");
-    for(int i = 0; i < 10; i++) {
+    int *lst = (int *)malloc(chunk_data->chunk_size * sizeof(int));
+    MPI_Recv(lst, chunk_data->chunk_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    printf("[rank %d] received list of integers from dispatcher!\n", rank);
+
+    chunk_data->chunk = lst;
+
+    /* printf("chunk = ");
+    for(int i = 0; i < chunk_data->chunk_size; i++) {
         printf("%02x ", chunk_data->chunk[i]);
     }
-    printf("\n");
+    printf("\n"); */
 
-    // count_words(chunk_data);
+
+    if (chunk_data->chunk_size != 0){
+      printf("[rank %d] counting words!\n", rank);
+      count_words(chunk_data);
+    }
 
     printf("[rank %d] nWords = %d, nWordsA = %d, nWordsE = %d, nWordsI = %d, nWordsO = %d, nWordsU = %d, nWordsY = %d\n", rank, chunk_data->nWords, chunk_data->nWordsA, chunk_data->nWordsE, chunk_data->nWordsI, chunk_data->nWordsO, chunk_data->nWordsU, chunk_data->nWordsY);
 
+    printf("[rank %d] sending partial results to dispatcher\n", rank);
+    MPI_Isend ((char *) chunk_data, sizeof(struct ChunkData), MPI_BYTE, 0, 0, MPI_COMM_WORLD, &request); // MPI_ISend with request
   }
 
   MPI_Finalize ();
@@ -252,4 +293,22 @@ void print_array(int arr[]) {
         printf("%d ", arr[i]);
     }
     printf("\n");
+}
+
+/**
+ *  \brief Print results of the text processing.
+ *
+ *  Operation carried out by the main thread.
+ */
+void print_results(struct File *file_data) {
+  // printing the results
+  for (int i = 0; i < numFiles; i++) {
+    printf("\n");
+    printf("File name: %s\n", (file_data + i)->filename);
+    printf("Total number of words = %d\n", (file_data + i)->nWords);
+    printf("N. of words with an\n");
+    printf("%7s %7s %7s %7s %7s %7s\n", "A", "E", "I", "O", "U", "Y");
+    printf("%7d %7d %7d %7d %7d %7d\n\n", (file_data + i)->nWordsA, (file_data + i)->nWordsE, (file_data + i)->nWordsI, (file_data + i)->nWordsO, (file_data + i)->nWordsU, (file_data + i)->nWordsY);
+  }
+
 }
