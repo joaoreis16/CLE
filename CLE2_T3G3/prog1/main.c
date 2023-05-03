@@ -5,8 +5,10 @@
 #include <math.h>
 #include <time.h>
 #include <mpi.h>
+#include <string.h>
 
 #include "countWords.h"
+
 
 /** \brief worker threads return status array */
 int *workers_status;
@@ -26,9 +28,9 @@ static double get_delta_time(void);
 /** \brief print command usage */
 static void printUsage (char *cmdName);
 
-void get_chunk(struct ChunkData *data, FILE *file);
-
 void print_results(struct File *file_data);
+
+void reset_struct(struct ChunkData *data);
 
 int main(int argc, char *argv[]) {
 
@@ -38,7 +40,6 @@ int main(int argc, char *argv[]) {
   numFiles = 0;                 // number of files to process
   maxBytesPerChunk = 4 * 1000;  // max bytes per chunk (default 4)
   int opt;                      // selected option
-  all_work_done = false;        // if all work is done 
 
   int rank, size;
   int dispatcher = 0;
@@ -120,21 +121,20 @@ int main(int argc, char *argv[]) {
       file->nWordsU = 0;
       file->nWordsY = 0;
       file->is_finished = false; 
+      file->filename = filenames[i];
 
-      /* open file */
-      char *file_name = filenames[i];
-      file->filename = file_name;
-      FILE *f = fopen(file_name, "rb");
+      // open the file
+      FILE *f = fopen(file->filename, "rb");
 
       if (f == NULL) {
-        printf("[error] could not open the file %s\n",file_name);
+        printf("[error] could not open the file %s\n",file->filename);
         return EXIT_FAILURE;
       }
 
-      /* while file is processing */
+      // while file is processing 
       while ( !file->is_finished ) {
 
-        /* Send a chunk of data to each worker process for processing */
+        // Send a chunk of data to each worker process for processing
         for (int worker = 1; worker < size; worker++) {
 
           // structure that has file's chunk to process and the results of that processing 
@@ -143,82 +143,105 @@ int main(int argc, char *argv[]) {
           chunk_data->nWords = 0; chunk_data->nWordsA = 0; chunk_data->nWordsE = 0;chunk_data->nWordsI = 0; chunk_data->nWordsO = 0;chunk_data->nWordsU = 0; chunk_data->nWordsY = 0;
           chunk_data->is_finished = false;
 
-          if (file->is_finished) {
-            fclose(f); /* close the file pointer */
-            break;
-          }
+          /* int all_work_done = 0;
+          MPI_Send(&all_work_done, 1, MPI_INT, worker, 0, MPI_COMM_WORLD); */
+          // MPI_Bcast(&all_work_done, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
           printf("[rank %d] getting chunk data for worker %d\n", rank, worker);
-          get_chunk(chunk_data, f);
-
-          /* printf("chunk = ");
-          for(int i = 0; i < chunk_data->chunk_size; i++) {
-              printf("%02x ", chunk_data->chunk[i]);
-          }
-          printf("\n"); */
+          get_valid_chunk(chunk_data, f); 
 
           printf("[rank %d] sending chunk data to worker %d\n", rank, worker);
-          MPI_Isend ((char *) chunk_data, sizeof(struct ChunkData), MPI_BYTE, worker, 0, MPI_COMM_WORLD, &request); // MPI_ISend with request
+          MPI_Send ((char *) chunk_data, sizeof(struct ChunkData), MPI_BYTE, worker, 0, MPI_COMM_WORLD); // MPI_ISend with request
+
           printf("[rank %d] sending list of integers to worker %d\n", rank, worker);
-          MPI_Isend (chunk_data->chunk, chunk_data->chunk_size, MPI_INT, worker, 0, MPI_COMM_WORLD, &request);/* the chunk buffer */
+          MPI_Send (chunk_data->chunk, chunk_data->chunk_size, MPI_INT, worker, 0, MPI_COMM_WORLD);      // the chunk buffer
+
+          if (chunk_data->is_finished) {
+            fclose(f); // close the file pointer
+            file->is_finished = true;
+            // break;
+          }
         }
 
-        
-
+        struct ChunkData *partial_results = (struct ChunkData *)malloc(sizeof(struct ChunkData));
         for (int worker = 1; worker < size; worker++) { 
-          struct ChunkData *partial_results = (struct ChunkData *)malloc(sizeof(struct ChunkData));
+  
           MPI_Recv ((char *) partial_results, sizeof (struct ChunkData), MPI_BYTE, worker, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+          printf("[rank %d] saving partial results from worker %d\n", rank, worker);
 
-          file->nWords += partial_results->nWords;
+          file->nWords  += partial_results->nWords;
           file->nWordsA += partial_results->nWordsA;
           file->nWordsE += partial_results->nWordsE;
           file->nWordsI += partial_results->nWordsI;
           file->nWordsO += partial_results->nWordsO;
           file->nWordsU += partial_results->nWordsU;
           file->nWordsY += partial_results->nWordsY;
-
         }
 
+        free(partial_results);
       }
 
     }
 
+    // enviar mensagem a avisar que o trabalho acabou
+   /*  int all_work_done = 1;
+    for (int worker = 1;  worker < size; worker++) {
+      MPI_Send(&all_work_done, 1, MPI_INT, worker, 0, MPI_COMM_WORLD);
+      printf("[rank %d] Transmited message: 'All work done!' to worker %d\n", rank, worker);
+    } */
+
+    // MPI_Bcast(&all_work_done, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    // printf("[rank %d] Transmited message: 'All work done!'\n", rank);
+
     printf("[rank %d] printing results\n", rank);
     print_results(file_data);
-    
+
+    free(file_data);
+   
   
   } else {
     struct ChunkData *chunk_data = (struct ChunkData *)malloc(sizeof(struct ChunkData));
 
     printf("[rank %d] waiting for work...\n", rank);
-    MPI_Recv ((char *) chunk_data, sizeof (struct ChunkData), MPI_BYTE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    printf("[rank %d] received chunk data from dispatcher!\n", rank);
+    while (true) {
 
-    int *lst = (int *)malloc(chunk_data->chunk_size * sizeof(int));
-    MPI_Recv(lst, chunk_data->chunk_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    printf("[rank %d] received list of integers from dispatcher!\n", rank);
+      /* int all_work_done = 0;
+      MPI_Recv(&all_work_done, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+      //MPI_Bcast(&all_work_done, 1, MPI_INT, 0, MPI_COMM_WORLD);
+      if (all_work_done == 1) {
+        printf("[rank %d] Recieved message: All work done!\n", rank);
+        free(chunk_data->chunk);
+        free(chunk_data);
+        break;
+      } */
+    
+      MPI_Recv ((char *) chunk_data, sizeof (struct ChunkData), MPI_BYTE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+      printf("[rank %d] received chunk data from dispatcher!\n", rank);
 
-    chunk_data->chunk = lst;
+      int *chunk = (int *)malloc(chunk_data->chunk_size * sizeof(int));
+      MPI_Recv(chunk, chunk_data->chunk_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+      printf("[rank %d] received list of integers from dispatcher!\n", rank);
 
-    /* printf("chunk = ");
-    for(int i = 0; i < chunk_data->chunk_size; i++) {
-        printf("%02x ", chunk_data->chunk[i]);
+      chunk_data->chunk = chunk;
+
+      if (chunk_data->chunk_size != 0){
+        printf("[rank %d] counting words!\n", rank);
+        count_words(chunk_data);
+      }
+
+      printf("[rank %d] nWords = %d, nWordsA = %d, nWordsE = %d, nWordsI = %d, nWordsO = %d, nWordsU = %d, nWordsY = %d\n", rank, chunk_data->nWords, chunk_data->nWordsA, chunk_data->nWordsE, chunk_data->nWordsI, chunk_data->nWordsO, chunk_data->nWordsU, chunk_data->nWordsY);
+
+      printf("[rank %d] sending partial results to dispatcher\n", rank);
+      MPI_Send ((char *) chunk_data, sizeof(struct ChunkData), MPI_BYTE, 0, 0, MPI_COMM_WORLD); // MPI_ISend with request
+
+      // reset structures
+      reset_struct(chunk_data);
     }
-    printf("\n"); */
-
-
-    if (chunk_data->chunk_size != 0){
-      printf("[rank %d] counting words!\n", rank);
-      count_words(chunk_data);
-    }
-
-    printf("[rank %d] nWords = %d, nWordsA = %d, nWordsE = %d, nWordsI = %d, nWordsO = %d, nWordsU = %d, nWordsY = %d\n", rank, chunk_data->nWords, chunk_data->nWordsA, chunk_data->nWordsE, chunk_data->nWordsI, chunk_data->nWordsO, chunk_data->nWordsU, chunk_data->nWordsY);
-
-    printf("[rank %d] sending partial results to dispatcher\n", rank);
-    MPI_Isend ((char *) chunk_data, sizeof(struct ChunkData), MPI_BYTE, 0, 0, MPI_COMM_WORLD, &request); // MPI_ISend with request
   }
 
-  MPI_Finalize ();
+  printf("[rank %d] Finalizing...\n", rank);
+  MPI_Finalize();
+  printf("[rank %d] done!\n", rank);
 
   // start counting the execution time
   (void) get_delta_time ();
@@ -230,29 +253,6 @@ int main(int argc, char *argv[]) {
   return EXIT_SUCCESS;
 }
 
-
-
-void get_chunk(struct ChunkData *data, FILE *file) {
-  if (!all_work_done) {
-
-    get_valid_chunk(data, file);
-
-    /* 
-    
-    if (data->is_finished) {
-      // avançar para o próximo ficheiro
-      file_index++;
-      fclose(file); // close the file pointer
-      
-      // ou dizer ao próximo worker que já não há benfica trabalhar
-      if (numFiles == file_index) {
-        all_work_done = true;
-      }
-    } 
-    
-    */
-  }
-}
 
 /**
  *  \brief Get the process time that has elapsed since last call of this time.
@@ -311,4 +311,12 @@ void print_results(struct File *file_data) {
     printf("%7d %7d %7d %7d %7d %7d\n\n", (file_data + i)->nWordsA, (file_data + i)->nWordsE, (file_data + i)->nWordsI, (file_data + i)->nWordsO, (file_data + i)->nWordsU, (file_data + i)->nWordsY);
   }
 
+}
+
+void reset_struct(struct ChunkData *data) {
+  // reset struct variables
+  data->is_finished = false;
+  data->chunk_size = 0;
+  data->nWords = 0; data->nWordsA = 0; data->nWordsE = 0; data->nWordsI = 0; data->nWordsO = 0; data->nWordsU = 0; data->nWordsY = 0;
+  memset(data->chunk, 0, maxBytesPerChunk * sizeof(unsigned int));
 }

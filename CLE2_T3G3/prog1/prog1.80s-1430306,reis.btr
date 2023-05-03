@@ -1,0 +1,12 @@
+
+prog1:1430306 terminated with signal 11 at PC=7f6d06856e35 SP=7fffdd6d51c0.  Backtrace:
+/lib/x86_64-linux-gnu/libmpich.so.12(+0x256e35)[0x7f6d06856e35]
+/lib/x86_64-linux-gnu/libmpich.so.12(+0x212843f)[0x7f6d0872843f]
+/lib/x86_64-linux-gnu/libmpich.so.12(+0x23fb85)[0x7f6d0683fb85]
+/lib/x86_64-linux-gnu/libmpich.so.12(+0x23fc7f)[0x7f6d0683fc7f]
+/lib/x86_64-linux-gnu/libmpich.so.12(+0x215a7e6)[0x7f6d0875a7e6]
+/lib/x86_64-linux-gnu/libmpich.so.12(MPI_Recv+0x4f8)[0x7f6d067124e8]
+./prog1(+0x2a38)[0x55b9a17aea38]
+/lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x7f6d06229d90]
+/lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x7f6d06229e40]
+./prog1(+0x13e5)[0x55b9a17ad3e5]

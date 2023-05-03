@@ -1,3 +1,1 @@
 # cle
-
-conda deactivate

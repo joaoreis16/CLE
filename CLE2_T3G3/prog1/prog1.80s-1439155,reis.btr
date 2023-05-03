@@ -1,0 +1,14 @@
+
+prog1:1439155 terminated with signal 6 at PC=7efe39e96a7c SP=7ffeae93e360.  Backtrace:
+/lib/x86_64-linux-gnu/libc.so.6(pthread_kill+0x12c)[0x7efe39e96a7c]
+/lib/x86_64-linux-gnu/libc.so.6(raise+0x16)[0x7efe39e42476]
+/lib/x86_64-linux-gnu/libc.so.6(abort+0xd3)[0x7efe39e287f3]
+/lib/x86_64-linux-gnu/libc.so.6(+0x896f6)[0x7efe39e896f6]
+/lib/x86_64-linux-gnu/libc.so.6(+0xa0d7c)[0x7efe39ea0d7c]
+/lib/x86_64-linux-gnu/libc.so.6(+0xa312b)[0x7efe39ea312b]
+/lib/x86_64-linux-gnu/libc.so.6(free+0x73)[0x7efe39ea54d3]
+/lib/x86_64-linux-gnu/libc.so.6(_IO_fclose+0xb7)[0x7efe39e7eda7]
+./prog1(+0x27da)[0x56471e93a7da]
+/lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x7efe39e29d90]
+/lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x7efe39e29e40]
+./prog1(+0x13e5)[0x56471e9393e5]

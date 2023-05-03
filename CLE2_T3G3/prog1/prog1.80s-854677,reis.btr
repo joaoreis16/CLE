@@ -1,7 +1,0 @@
-
-prog1:854677 terminated with signal 11 at PC=7f098d6f8941 SP=7ffccf4ef5e0.  Backtrace:
-/lib/x86_64-linux-gnu/libmpich.so.12(MPI_Irecv+0x4a1)[0x7f098d6f8941]
-./prog1(+0x27e0)[0x555b4f3f07e0]
-/lib/x86_64-linux-gnu/libc.so.6(+0x29d90)[0x7f098d229d90]
-/lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0x80)[0x7f098d229e40]
-./prog1(+0x13c5)[0x555b4f3ef3c5]
