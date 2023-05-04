@@ -280,14 +280,6 @@ static void printUsage(char *cmdName) {
            "  -h             --- print this help\n", cmdName);
 }
 
-
-void print_array(int arr[]) {
-    for (int i = 0; i < 4000; i++) {
-        printf("%d ", arr[i]);
-    }
-    printf("\n");
-}
-
 /**
  *  \brief Print results of the text processing.
  *
