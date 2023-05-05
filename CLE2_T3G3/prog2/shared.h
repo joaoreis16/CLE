@@ -23,21 +23,6 @@ struct Task {
 
 
 /**
- *  \brief Structure that contains a subsequence of integers.
- *
- *   It also stores the size of the subsequence and two booleans:
- *   one to check if it was already sorted and the other to check
- *   if it is being processed.
- */
-struct SubSequence {
-  unsigned int *subsequence;
-  unsigned int size;
-  bool is_sorted;
-  bool is_being_processed;
-};
-
-
-/**
  *  \brief Structure with the filename and file pointer to process.
  *
  *   It also stores the number of integers in the file (size), the
@@ -49,21 +34,13 @@ struct File {
   char *filename;
   FILE *file;
   int size;
-  unsigned int *sequence;
-  struct SubSequence **all_subsequences;
-  int all_subsequences_length;
+  int *sequence;
+  int **subsequences;
+  int *subsequences_length;
+  int all_subsequences_size;
 };
 
 
-/**
- *  \brief Initialization of the data transfer region.
- *
- *  Allocates the memory for an array of structures with the files passed
- *  as argument and initializes it with their names.
- *
- *  \param filename contains the names of the files to be stored
- */
-extern void initialize(char *filename, int n_workers);
 
 /**
  *  \brief Read the file.
@@ -71,7 +48,7 @@ extern void initialize(char *filename, int n_workers);
  *  Reads a binary file and stores its content in an array of integers.
  *
  */
-extern void read_file();
+extern void read_file(struct File *file);
 
 /**
  *  \brief Validation of final sequence.
@@ -81,12 +58,6 @@ extern void read_file();
  */
 extern void validate();
 
-/**
- *  \brief Request for work.
- *
- *  Operation carried out by the workers.
- */
-extern void request_work();
 
 /**
  *  \brief Sort a sequence.
@@ -95,7 +66,7 @@ extern void request_work();
  *
  *  \param id contains the id of the sequence to be sorted
  */
-extern void sort_sequence(int id);
+extern int * sort_sequence(int *subsequence, int size);
 
 /**
  *  \brief Merge two sequences.
@@ -104,16 +75,8 @@ extern void sort_sequence(int id);
  *
  *  \param worker_id contains the worker id that was assigned to merge the subsequences
  */
-extern void merge_sequences(int worker_id);
+extern int * merge_sequences(int *subsequence1, int size1, int *subsequence2, int size2);
 
-/**
- *  \brief Notify the distributor that work has been completed.
- *
- *  Operation carried out by the workers.
- *
- *  \param id contains the worker id that has completed its task
- */
-extern void notify(int id);
 
 /**
  *  \brief Divide the work between the workers.
@@ -122,16 +85,7 @@ extern void notify(int id);
  * 
  *  \param n_workers contains the number of workers
  */
-extern void divide_work(int n_workers);
-
-/**
- *  \brief Listening for workers' activity and handling their requests.
- *
- *  Operation carried out by the distributor.
- * 
- *  \param n_workers contains the number of workers
- */
-extern void listen(int n_workers);
+extern void divide_work(struct File *file, int n);
 
 /**
  *  \brief Applies the Bitonic Sort algorithm to a subsequence of integers.
