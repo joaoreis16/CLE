@@ -31,6 +31,7 @@
 #include <pthread.h>
 #include <errno.h>
 #include <string.h>
+#include <limits.h>
 
 #include "shared.h"
 
@@ -78,6 +79,7 @@ void read_file(struct File *file) {
  * 
  *  \param n contains the number of workers
  */
+
 void divide_work(struct File *file, int n) {
 
     file->subsequences = (int **)malloc(n * sizeof(int *));
@@ -106,6 +108,7 @@ void divide_work(struct File *file, int n) {
 
     file->all_subsequences_size = n;
 }
+
 
 
 
@@ -158,7 +161,26 @@ void bitonicSortRecursive(int *val, int low, int cnt, int dir) {
  *  \param N contains the size of the subsequence
  */
 void bitonicSort(int *val, int N) {
-    bitonicSortRecursive(val, 0, N, 1);
+    int size = 1;
+    while (size < N) {
+        size <<= 1;
+    }
+
+    int *padded_val = (int *)malloc(size * sizeof(int));
+    for (int i = 0; i < N; i++) {
+        padded_val[i] = val[i];
+    }
+    for (int i = N; i < size; i++) {
+        padded_val[i] = INT_MAX;
+    }
+
+    bitonicSortRecursive(padded_val, 0, size, 1);
+
+    for (int i = 0; i < N; i++) {
+        val[i] = padded_val[i];
+    }
+
+    free(padded_val);
 }
 
 
@@ -198,37 +220,33 @@ int * merge_sequences(int *subsequence1, int size1, int *subsequence2, int size2
     }
 
     return merged_subsequence;
+}
 
 
-    /* int new_size = file->all_subsequences_length - 1;
-    struct SubSequence **new_all_subseqs = (struct SubSequence**)malloc(new_size * sizeof(struct SubSequence *));
-    
-    int idx = 0;
-    bool put_merged_subsequence = false;
-    for (int i = 0; i < file->all_subsequences_length; i++) {
-        if ((i == index_subsequence1 || i == index_subsequence2)) {
-            if (!put_merged_subsequence) {            
-                struct SubSequence *subseq = (struct SubSequence*)malloc(sizeof(struct SubSequence));
-                subseq->subsequence = merged_subsequence;
-                subseq->size = left_size + right_size;
-                subseq->is_sorted = true;
-                subseq->is_being_processed = true;
-                new_all_subseqs[idx++] = subseq;
-                put_merged_subsequence = true;
-            }
-        } else {  // copy the subsequence
-            new_all_subseqs[idx++] = file->all_subsequences[i];
+/**
+ *  \brief Validate the sort method
+ *
+ *  Check in the end if the sequence of values is properly sorted
+ *
+ */
+void validate(struct File *file) {
+
+    int *val = file->sequence;
+    int N    = file->size;
+
+    int i;
+    for (i = 0; i < N; i++) {
+
+        if (i == (N - 1))  {
+            printf ("Everything is OK!\n");
+            break;
+        }
+
+        if (val[i] > val[i+1]) { 
+            printf ("Error in position %d between element %d and %d\n", i, val[i], val[i+1]);
+            break;
         }
     }
 
-    for (int i = 0; i < file->all_subsequences_length; i++) {
-        if (i == index_subsequence1 || i == index_subsequence2) {
-            free(file->all_subsequences[i]);
-        }
-    }
-    free(file->all_subsequences);
-    
-    file->all_subsequences = new_all_subseqs;
-    file->all_subsequences_length = new_size; */
-
+    printf ("\n");
 }

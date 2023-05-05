@@ -65,10 +65,6 @@ int main(int argc, char *argv[]) {
     divide_work(file, n_workers);
     printf("[rank %d] work divided\n", rank);
 
-    /* for (int i = 0; i < n_workers; i++) {
-      printf("subsequence %d (%d) = ", i, file->subsequences_length[i]);
-      printArray(file->subsequences[i], file->subsequences_length[i]);
-    } */
 
     for (int worker = 1; worker < size; worker++) {
 
@@ -78,14 +74,9 @@ int main(int argc, char *argv[]) {
     }
 
     for (int worker = 1; worker < size; worker++) { 
-
       MPI_Recv (file->subsequences[ worker - 1 ], file->subsequences_length[ worker - 1 ], MPI_INT, worker, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
       printf("[rank %d] received sorted subsequence from worker %d\n", rank, worker);
     }
-
-    // quantas subsequencias há?
-    //      par?   enviar pares de subsequencias para cada worker
-    //      impar? enviar pares de subsequencias para cada worker e a que falta damos merge com uma lista vazia
 
     // merge all sorted subsequences
     while (file->all_subsequences_size != 1) {
@@ -113,7 +104,7 @@ int main(int argc, char *argv[]) {
         worker++;
       }
 
-      printf("[rank %d] active workers = %d\n", rank, worker);
+      printf("[rank %d] number of active workers = %d\n", rank, worker);
 
       // enviar uma mensagem aos workers restantes a dizer que vão estiar 
       for (int i = worker; i < size; i++) {
@@ -121,8 +112,13 @@ int main(int argc, char *argv[]) {
         MPI_Send(&merge_task, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
       }
 
-      int *new_subsequences_length = (int *)malloc((worker - 1) * sizeof(int));
-      int **new_subsequences = (int **)malloc((worker - 1) * sizeof(int *));
+      int new_size = worker - 1;
+      if (file->all_subsequences_size % 2 != 0) {
+        new_size = worker;
+      }
+
+      int *new_subsequences_length = (int *)malloc(new_size * sizeof(int));
+      int **new_subsequences = (int **)malloc(new_size * sizeof(int *));
       int new_subsequences_size = 0;
 
       for (int i = 1; i < worker; i++) {
@@ -139,7 +135,9 @@ int main(int argc, char *argv[]) {
       }
 
       if (file->all_subsequences_size % 2 != 0) {
-        new_subsequences[new_subsequences_size + 1] = file->subsequences[file->all_subsequences_size - 1];
+        new_subsequences[new_subsequences_size] = file->subsequences[file->all_subsequences_size - 1];
+        new_subsequences_length[new_subsequences_size] = file->subsequences_length[file->all_subsequences_size - 1];
+        new_subsequences_size++;
       }
 
       free(file->subsequences);
@@ -148,14 +146,18 @@ int main(int argc, char *argv[]) {
       file->all_subsequences_size = new_subsequences_size;
       file->subsequences = new_subsequences;
       file->subsequences_length = new_subsequences_length;
-
-      for (int i = 0; i < n_workers; i++) {
-        printf("subsequence %d (%d) = ", i, file->subsequences_length[i]);
-        printArray(file->subsequences[i], file->subsequences_length[i]);
-      } 
-
-      // printf("[rank %d] all_subsequences_size = %d\n", rank, file->all_subsequences_size);
     }
+
+    // enviar mensagem que todo o trabalho acabou
+    for (int worker = 1; worker < size; worker++) {
+      int merge_task = -1;
+      MPI_Send(&merge_task, 1, MPI_INT, worker, 0, MPI_COMM_WORLD);
+    }
+
+    file->sequence = file->subsequences[0];
+
+    printf("[rank %d] ", rank);
+    validate(file);
 
     float exec_time = get_delta_time();
     printf("Execution time = %.6fs\n", exec_time);
@@ -178,36 +180,38 @@ int main(int argc, char *argv[]) {
 
     // caso receba uma mensagem a dizer que tenha que fazer merge
     int merge_task = 0;
-    MPI_Recv(&merge_task, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    while (true) {
+      MPI_Recv(&merge_task, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-    if (merge_task) {
+      if (merge_task == -1) break;
 
-      int subsequence1_size;
-      MPI_Recv(&subsequence1_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+      if (merge_task) {
 
-      int *subsequence1 = (int *)malloc(subsequence1_size * sizeof(int));
-      MPI_Recv(subsequence1, subsequence1_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        int subsequence1_size;
+        MPI_Recv(&subsequence1_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-      int subsequence2_size;
-      MPI_Recv(&subsequence2_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        int *subsequence1 = (int *)malloc(subsequence1_size * sizeof(int));
+        MPI_Recv(subsequence1, subsequence1_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-      int *subsequence2 = (int *)malloc(subsequence2_size * sizeof(int));
-      MPI_Recv(subsequence2, subsequence2_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-      
-      printf("[rank %d] received subsequences to merge from dispatcher!\n", rank);
+        int subsequence2_size;
+        MPI_Recv(&subsequence2_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-      int merged_sequence_size = (subsequence1_size + subsequence2_size);
+        int *subsequence2 = (int *)malloc(subsequence2_size * sizeof(int));
+        MPI_Recv(subsequence2, subsequence2_size, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        
+        printf("[rank %d] received subsequences to merge from dispatcher!\n", rank);
 
-      int *merged_subsequence = (int *)malloc(merged_sequence_size  * sizeof(int));
-      merged_subsequence = merge_sequences(subsequence1, subsequence1_size, subsequence2, subsequence2_size);
+        int merged_sequence_size = (subsequence1_size + subsequence2_size);
 
-      printf("merged subsequence  = ");
-      printArray(merged_subsequence,merged_sequence_size );
+        int *merged_subsequence = (int *)malloc(merged_sequence_size  * sizeof(int));
+        merged_subsequence = merge_sequences(subsequence1, subsequence1_size, subsequence2, subsequence2_size);
 
-      MPI_Send(&merged_sequence_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);    // send the subsequence1 size
-      MPI_Send(merged_subsequence, merged_sequence_size, MPI_INT, 0, 0, MPI_COMM_WORLD);
-      printf("[rank %d] send merged subsequence to dispatcher!\n", rank);
+        MPI_Send(&merged_sequence_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);    // send the subsequence1 size
+        MPI_Send(merged_subsequence, merged_sequence_size, MPI_INT, 0, 0, MPI_COMM_WORLD);
+        printf("[rank %d] send merged subsequence to dispatcher!\n", rank);
+      }
     }
+    
   }
 
   MPI_Finalize();

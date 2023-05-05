@@ -10,17 +10,11 @@
 #include "countWords.h"
 
 
-/** \brief worker threads return status array */
-int *workers_status;
-
 /** \brief number of files to process */
 int numFiles;
 
 /** \brief maximum number of bytes per chunk */
 int maxBytesPerChunk;
-
-/** \brief bool that is true if all work is done, false otherwise */
-bool all_work_done;
 
 /** \brief execution time measurement */
 static double get_delta_time(void);
@@ -48,7 +42,6 @@ int main(int argc, char *argv[]) {
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
-  MPI_Request request = MPI_REQUEST_NULL;
 
   /* This program requires at least 2 processes */
   if (size < 2) {

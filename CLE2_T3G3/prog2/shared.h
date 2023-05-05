@@ -56,7 +56,7 @@ extern void read_file(struct File *file);
  *  Checks whether the final sequence is properly sorted or not.
  *
  */
-extern void validate();
+extern void validate(struct File *file);
 
 
 /**
