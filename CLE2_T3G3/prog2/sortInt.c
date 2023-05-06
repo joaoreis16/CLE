@@ -1,31 +1,3 @@
-/**
- *  \file shared.c (implementation file)
- *
- *  Synchronization based on monitors.
- *
- *  Data transfer region implemented as a monitor.
- *
- *  This shared region will use the array of structures initialized by
- *  the main thread.
- * 
- *  Workers can access the shared region to obtain subsequences to process from that
- *  array of structures.
- * 
- *  There is also a function (validate) to check whether the resultant sequence is correctly sorted, 
- *  which is used when there is no more work to be carried out.
- * 
- *  \brief Role of the main thread 
- * 
- *   1. to get the text file names by processing the command line and storing them in 
- *   the shared region
- *
- *   2. to create the distributor and worker threads and wait for their termination
- *
- *   3. to print the validation of the resultant sorted sequence.
- *
- *  \author Artur Romão e João Reis - March 2023
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -33,8 +5,7 @@
 #include <string.h>
 #include <limits.h>
 
-#include "shared.h"
-
+#include "sortInt.h"
 
 
 /**
@@ -75,11 +46,11 @@ void read_file(struct File *file) {
 /**
  *  \brief Divide the work between the workers.
  *
- *  Operation carried out by the distributor.
+ *  Operation carried out by the dispatcher.
  * 
- *  \param n contains the number of workers
+ *  \param file contains the struct File that have all the information needed
+ *  \param n contains the number of parts that the sequence needs to be divided
  */
-
 void divide_work(struct File *file, int n) {
 
     file->subsequences = (int **)malloc(n * sizeof(int *));
@@ -110,14 +81,13 @@ void divide_work(struct File *file, int n) {
 }
 
 
-
-
 /**
  *  \brief Sort a sequence.
  *
  *  Operation carried out by the workers.
  *
- *  \param id contains the id of the sequence to be sorted
+ *  \param subsequence contains the subsequence of integers that needs to be sorted
+ *  \param size contains the size of the subsequence
  */
 int * sort_sequence(int *subsequence, int size) {
     bitonicSort(subsequence, size);
@@ -189,7 +159,10 @@ void bitonicSort(int *val, int N) {
  *
  *  Operation carried out by the workers. 
  *
- *  \param worker_id contains the worker id that was assigned to merge the subsequences
+ *  \param subsequence1 contains the first subsequence1 of integers that needs to be merged
+ *  \param size1 contains the size of the subsequence1
+ *  \param subsequence2 contains the second subsequence of integers that needs to be merged
+ *  \param size2 contains the size of the subsequence2
  */
 int * merge_sequences(int *subsequence1, int size1, int *subsequence2, int size2) {
 
@@ -224,9 +197,11 @@ int * merge_sequences(int *subsequence1, int size1, int *subsequence2, int size2
 
 
 /**
- *  \brief Validate the sort method
+ *  \brief Validation of final sequence.
  *
- *  Check in the end if the sequence of values is properly sorted
+ *  Checks whether the final sequence is properly sorted or not.
+ * 
+ *  \param file contains the struct File that have all the information needed
  *
  */
 void validate(struct File *file) {

@@ -9,7 +9,6 @@
 
 #include "countWords.h"
 
-
 /** \brief number of files to process */
 int numFiles;
 
@@ -25,6 +24,7 @@ static void printUsage (char *cmdName);
 void print_results(struct File *file_data);
 
 void reset_struct(struct ChunkData *data);
+
 
 int main(int argc, char *argv[]) {
 
@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  /* This program requires at least 2 processes */
+  // This program requires at least 2 processes 
   if (size < 2) {
     fprintf(stderr, "Requires at least two processes.\n");
     MPI_Finalize();
@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
           filenames[numFiles++] = optarg;
           break;
 
-        case 'm': // n. of max bytes per chunk
+        case 'm': // number of max bytes per chunk
           if (atoi(optarg) != 4 && atoi(optarg) != 8) {
             fprintf(stderr, "%s: number of bytes must be 4 or 8 kBytes\n", argv[0]);
             printUsage(argv[0]);
@@ -101,13 +101,14 @@ int main(int argc, char *argv[]) {
     // start counting the execution time
     (void) get_delta_time ();
 
-    struct File *file_data = (struct File *)malloc(numFiles * sizeof(struct File)); /* allocating memory for numFiles of fileData structs */
+
+    struct File *file_data = (struct File *)malloc(numFiles * sizeof(struct File)); // allocating memory for numFiles of fileData structs
 
     for (int i = 0; i < numFiles; i++) {
 
       struct File *file = (file_data + i);
 
-      /* initialize struct data */
+      // initialize struct File data
       file->nWords = 0;
       file->nWordsA = 0;
       file->nWordsE = 0;
@@ -127,7 +128,7 @@ int main(int argc, char *argv[]) {
       }
 
 
-      // while file is processing 
+      // while the process of all file is not finished
       while ( !file->is_finished ) {
 
         // Send a chunk of data to each worker process for processing
@@ -139,12 +140,15 @@ int main(int argc, char *argv[]) {
           chunk_data->nWords = 0; chunk_data->nWordsA = 0; chunk_data->nWordsE = 0;chunk_data->nWordsI = 0; chunk_data->nWordsO = 0;chunk_data->nWordsU = 0; chunk_data->nWordsY = 0;
           chunk_data->is_finished = false;
 
+          // inform the workers if all work is done (1) or not (0), in this case, still have work to do, so the worker will receive the number 0
           int all_work_done = 0;
           MPI_Send(&all_work_done, 1, MPI_INT, worker, 0, MPI_COMM_WORLD);
 
+          // getting a valid chunk of data (see this function in file countWords.c)
           printf("[rank %d] getting chunk data for worker %d\n", rank, worker);
           get_valid_chunk(chunk_data, f); 
 
+          // send the chunk and the struct ChunkData to workers
           printf("[rank %d] sending chunk data to worker %d\n", rank, worker);
           MPI_Send ((char *) chunk_data, sizeof(struct ChunkData), MPI_BYTE, worker, 0, MPI_COMM_WORLD); // MPI_Send with request
 
@@ -154,16 +158,18 @@ int main(int argc, char *argv[]) {
           if (chunk_data->is_finished) {
             fclose(f); // close the file pointer
             file->is_finished = true;
-            // break;
           }
         }
 
+        // struct to save the partial results of the each worker
         struct ChunkData *partial_results = (struct ChunkData *)malloc(sizeof(struct ChunkData));
         for (int worker = 1; worker < size; worker++) { 
   
+          // recieve the partial results
           MPI_Recv ((char *) partial_results, sizeof (struct ChunkData), MPI_BYTE, worker, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
           printf("[rank %d] saving partial results from worker %d\n", rank, worker);
 
+          // update final results
           file->nWords  += partial_results->nWords;
           file->nWordsA += partial_results->nWordsA;
           file->nWordsE += partial_results->nWordsE;
@@ -178,14 +184,14 @@ int main(int argc, char *argv[]) {
 
     }
 
-    // enviar mensagem a avisar que o trabalho acabou
+    // inform the workers if all work is done (1) 
     int all_work_done = 1;
     for (int worker = 1;  worker < size; worker++) {
       MPI_Send(&all_work_done, 1, MPI_INT, worker, 0, MPI_COMM_WORLD);
       printf("[rank %d] transmitted message: 'All work done!' to worker %d\n", rank, worker);
     }
 
-
+    // print the results
     printf("[rank %d] printing results\n", rank);
     print_results(file_data);
 
@@ -201,6 +207,7 @@ int main(int argc, char *argv[]) {
     printf("[rank %d] waiting for work...\n", rank);
     while (true) {
 
+      // check if there is still work to do 
       int all_work_done = 0;
       MPI_Recv(&all_work_done, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
       if (all_work_done == 1) {
@@ -210,6 +217,7 @@ int main(int argc, char *argv[]) {
         break;
       }
     
+      // receive the chunk size and then the chunk (list of integers)
       MPI_Recv ((char *) chunk_data, sizeof (struct ChunkData), MPI_BYTE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
       printf("[rank %d] received chunk data from dispatcher!\n", rank);
 
@@ -220,10 +228,13 @@ int main(int argc, char *argv[]) {
       chunk_data->chunk = chunk;
 
       if (chunk_data->chunk_size != 0){
+
+        // process the chunk of data (see this function in file countWords.c)
         printf("[rank %d] counting words!\n", rank);
         count_words(chunk_data);
       }
 
+      // send the partial results to dispatcher
       printf("[rank %d] sending partial results to dispatcher\n", rank);
       MPI_Send ((char *) chunk_data, sizeof(struct ChunkData), MPI_BYTE, 0, 0, MPI_COMM_WORLD); // MPI_Send with request
 
@@ -232,10 +243,8 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  printf("[rank %d] Finalizing... ", rank);
   MPI_Finalize();
-  printf("done!\n");
-
+  
   return EXIT_SUCCESS;
 }
 
@@ -275,8 +284,6 @@ static void printUsage(char *cmdName) {
 
 /**
  *  \brief Print results of the text processing.
- *
- *  Operation carried out by the main thread.
  */
 void print_results(struct File *file_data) {
   // printing the results
@@ -291,6 +298,10 @@ void print_results(struct File *file_data) {
 
 }
 
+
+/**
+ *  \brief Reset the variables of a structure.
+ */
 void reset_struct(struct ChunkData *data) {
   // reset struct variables
   int new_size = data->chunk_size;

@@ -1,13 +1,3 @@
-/**
- *  \file countWords.h (implementation file)
- *
- *  \brief Problem name: Text Processing with Multithreading.
- *
- *  Functions used for text processing.
- *
- *  \author Artur Romão e João Reis - March 2023
- */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>

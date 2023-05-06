@@ -8,26 +8,13 @@
 
 
 /**
- *  \brief Structure with the task assigned to a worker.
- *
- *   It stores the worker_id, type of task (sort or merge), index of the sequences to be processed and 
- *   a boolean flag to indicate if the worker is busy or not.
- */
-struct Task {
-    int worker_id;
-    char *type;
-    int index_sequence1;
-    int index_sequence2;
-    bool is_busy;
-};
-
-
-/**
  *  \brief Structure with the filename and file pointer to process.
  *
  *   It also stores the number of integers in the file (size), the
- *   initial unsorted sequence of integers (*sequence) and an array of 
- *   pointers to all the subsequences (**all_subsequences).
+ *   initial unsorted sequence of integers (*sequence), an array of 
+ *   pointers to all the subsequences (**subsequences), another array 
+ *   of integers to store all the subsequences length (*subsequences_length)
+ *   and the size of subsequences (all_subsequences_size).
  * 
  */
 struct File {
@@ -39,7 +26,6 @@ struct File {
   int *subsequences_length;
   int all_subsequences_size;
 };
-
 
 
 /**
@@ -54,6 +40,8 @@ extern void read_file(struct File *file);
  *  \brief Validation of final sequence.
  *
  *  Checks whether the final sequence is properly sorted or not.
+ * 
+ *  \param file contains the struct File that have all the information needed
  *
  */
 extern void validate(struct File *file);
@@ -64,7 +52,8 @@ extern void validate(struct File *file);
  *
  *  Operation carried out by the workers.
  *
- *  \param id contains the id of the sequence to be sorted
+ *  \param subsequence contains the subsequence of integers that needs to be sorted
+ *  \param size contains the size of the subsequence
  */
 extern int * sort_sequence(int *subsequence, int size);
 
@@ -73,7 +62,10 @@ extern int * sort_sequence(int *subsequence, int size);
  *
  *  Operation carried out by the workers. 
  *
- *  \param worker_id contains the worker id that was assigned to merge the subsequences
+ *  \param subsequence1 contains the first subsequence1 of integers that needs to be merged
+ *  \param size1 contains the size of the subsequence1
+ *  \param subsequence2 contains the second subsequence of integers that needs to be merged
+ *  \param size2 contains the size of the subsequence2
  */
 extern int * merge_sequences(int *subsequence1, int size1, int *subsequence2, int size2);
 
@@ -81,9 +73,10 @@ extern int * merge_sequences(int *subsequence1, int size1, int *subsequence2, in
 /**
  *  \brief Divide the work between the workers.
  *
- *  Operation carried out by the distributor.
+ *  Operation carried out by the dispatcher.
  * 
- *  \param n_workers contains the number of workers
+ *  \param file contains the struct File that have all the information needed
+ *  \param n contains the number of parts that the sequence needs to be divided
  */
 extern void divide_work(struct File *file, int n);
 
