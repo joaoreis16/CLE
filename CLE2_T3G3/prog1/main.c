@@ -166,13 +166,9 @@ int main(int argc, char *argv[]) {
         int active_workers = worker + 1;
         if (worker == size) active_workers = worker;
 
-        printf("[rank %d] active workers = %d\n", rank, active_workers);
-
         // struct to save the partial results of the each worker
         struct ChunkData *partial_results = (struct ChunkData *)malloc(sizeof(struct ChunkData));
         for (int worker = 1; worker < active_workers; worker++) { 
-
-          printf("[rank %d] receiving partial results from worker %d\n", rank, worker);
   
           // recieve the partial results
           MPI_Recv ((char *) partial_results, sizeof (struct ChunkData), MPI_BYTE, worker, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
