@@ -16,6 +16,7 @@
         "streambuf": "c",
         "type_traits": "c",
         "limits": "c",
-        "shared.h": "c"
+        "shared.h": "c",
+        "sortint.h": "c"
     }
 }

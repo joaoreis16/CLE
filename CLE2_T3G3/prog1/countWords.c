@@ -135,8 +135,8 @@ void count_words(struct ChunkData *data) {
     bool inWord = false;
     data->nWords = 0; data->nWordsA = 0; data->nWordsE = 0; data->nWordsI = 0; data->nWordsO = 0; data->nWordsU = 0; data->nWordsY = 0;
     int total_bytes = 0;
-    char actual_char[20];
-    char last_char[20];
+    char actual_char[50];
+    char last_char[50];
     bool first_occur[6] = {false, false, false, false, false, false};
 
     for(int k = 0; k < data->chunk_size; k++) {
@@ -224,8 +224,8 @@ void count_words(struct ChunkData *data) {
 void get_valid_chunk(struct ChunkData *data, FILE *file) {
     int bytes_read = 0;
     int word_offset  = 0;
-    char actual_char[20];
-    char last_char[20];
+    char actual_char[50];
+    char last_char[50];
     int total_bytes = 0;
     int num_of_bytes = 0;
     while (bytes_read < maxBytesPerChunk) {

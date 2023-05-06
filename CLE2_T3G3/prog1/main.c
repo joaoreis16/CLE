@@ -132,7 +132,8 @@ int main(int argc, char *argv[]) {
       while ( !file->is_finished ) {
 
         // Send a chunk of data to each worker process for processing
-        for (int worker = 1; worker < size; worker++) {
+        int worker;
+        for (worker = 1; worker < size; worker++) {
 
           // structure that has file's chunk to process and the results of that processing 
           struct ChunkData *chunk_data = (struct ChunkData *)malloc(sizeof(struct ChunkData));
@@ -158,12 +159,20 @@ int main(int argc, char *argv[]) {
           if (chunk_data->is_finished) {
             fclose(f); // close the file pointer
             file->is_finished = true;
+            break;
           }
         }
 
+        int active_workers = worker + 1;
+        if (worker == size) active_workers = worker;
+
+        printf("[rank %d] active workers = %d\n", rank, active_workers);
+
         // struct to save the partial results of the each worker
         struct ChunkData *partial_results = (struct ChunkData *)malloc(sizeof(struct ChunkData));
-        for (int worker = 1; worker < size; worker++) { 
+        for (int worker = 1; worker < active_workers; worker++) { 
+
+          printf("[rank %d] receiving partial results from worker %d\n", rank, worker);
   
           // recieve the partial results
           MPI_Recv ((char *) partial_results, sizeof (struct ChunkData), MPI_BYTE, worker, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -227,16 +236,13 @@ int main(int argc, char *argv[]) {
 
       chunk_data->chunk = chunk;
 
-      if (chunk_data->chunk_size != 0){
-
-        // process the chunk of data (see this function in file countWords.c)
-        printf("[rank %d] counting words!\n", rank);
-        count_words(chunk_data);
-      }
-
+      // process the chunk of data (see this function in file countWords.c)
+      printf("[rank %d] counting words!\n", rank);
+      count_words(chunk_data);
+      
       // send the partial results to dispatcher
       printf("[rank %d] sending partial results to dispatcher\n", rank);
-      MPI_Send ((char *) chunk_data, sizeof(struct ChunkData), MPI_BYTE, 0, 0, MPI_COMM_WORLD); // MPI_Send with request
+      MPI_Send((char *) chunk_data, sizeof(struct ChunkData), MPI_BYTE, 0, 0, MPI_COMM_WORLD); // MPI_Send with request
 
       // reset structures
       reset_struct(chunk_data);
